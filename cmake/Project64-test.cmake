@@ -29,4 +29,14 @@ if(TARGET Project64-headless)
         set_tests_properties(headless-${cpu} PROPERTIES
             FIXTURES_REQUIRED headless RESOURCE_LOCK headless-basedir TIMEOUT 120)
     endforeach()
+
+    # GLideN64 offscreen (EGL): the context starts and ReadScreen answers
+    if(TARGET GLideN64)
+        add_test(NAME headless-gliden64 COMMAND Project64-headless --frames 60 --cpu interpreter
+            --gfx GFX/GLideN64.so --rsp RSP/Project64-RSP.so
+            --audio Audio/Project64-Audio-Wav.so --input Input/Project64-Input-Script.so
+            --dump "${headless_dir}/gliden64" "${headless_dir}/loop.z64")
+        set_tests_properties(headless-gliden64 PROPERTIES
+            FIXTURES_REQUIRED headless RESOURCE_LOCK headless-basedir TIMEOUT 120)
+    endif()
 endif()
