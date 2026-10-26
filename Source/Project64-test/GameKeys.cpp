@@ -139,10 +139,11 @@ int TestBaseDir(const fs::path & WorkDir)
     std::vector<char> Arg2(Dir.begin(), Dir.end());
     Arg2.push_back('\0');
     char * Argv[] = {Arg0, Arg1, Arg2.data(), nullptr};
+    const std::string Separator(1, (char)fs::path::preferred_separator);
     CHECK(AppInit(&Notify, "/nonexistent-base/", 3, Argv));
-    CHECK_EQ(g_Settings->LoadStringVal(Cmd_BaseDirectory), Dir + "/");
+    CHECK_EQ(g_Settings->LoadStringVal(Cmd_BaseDirectory), Dir + Separator);
     CHECK_EQ(g_Settings->LoadStringVal(SupportFile_RomDatabase), (WorkDir / "Config" / "Project64.rdb").string());
-    CHECK_EQ(g_Settings->LoadStringVal(Directory_NativeSave), (WorkDir / "MySaves").string() + "/");
+    CHECK_EQ(g_Settings->LoadStringVal(Directory_NativeSave), (WorkDir / "MySaves").string() + Separator);
     AppCleanup();
     return TestEnd();
 }
