@@ -5,6 +5,33 @@ add_library(Settings STATIC ${settings_sources})
 pj64_target(Settings Settings)
 target_link_libraries(Settings PUBLIC Common)
 
+if(NOT WIN32)
+    # Plugins for the headless frontend (Source/Project64-headless), in the
+    # places the Linux default settings name.
+    # RSP: the portable plugin of the Android port, on Project64-rsp-core
+    add_library(Project64-rsp-so SHARED "${PJ64_SRC}/Android/PluginRSP/main.cpp")
+    pj64_target(Project64-rsp-so Android/PluginRSP)
+    target_link_libraries(Project64-rsp-so PRIVATE Project64-rsp-core Settings)
+    pj64_plugin(Project64-rsp-so Project64-RSP RSP)
+
+    # Audio: the game's audio into a WAV file
+    add_library(Project64-audio-wav SHARED "${PJ64_SRC}/Project64-audio-wav/AudioWav.cpp")
+    pj64_target(Project64-audio-wav Project64-audio-wav)
+    target_link_libraries(Project64-audio-wav PRIVATE Settings)
+    pj64_plugin(Project64-audio-wav Project64-Audio-Wav Audio)
+
+    # Input: controller states from a script
+    add_library(Project64-input-script SHARED "${PJ64_SRC}/Project64-input-script/InputScript.cpp")
+    pj64_target(Project64-input-script Project64-input-script)
+    target_link_libraries(Project64-input-script PRIVATE Settings)
+    pj64_plugin(Project64-input-script Project64-Input-Script Input)
+
+    # Video: no rendering; the frame the VI shows from RDRAM
+    add_library(Project64-video-null SHARED "${PJ64_SRC}/Project64-video-null/VideoNull.cpp")
+    pj64_target(Project64-video-null Project64-video-null)
+    pj64_plugin(Project64-video-null Project64-Video-Null GFX)
+endif()
+
 if(WIN32)
     # RSP: the interpreter, recompilers and HLE of Project64-rsp-core, with a debugger
     pj64_vcxproj_sources(rsp_sources "${PJ64_SRC}/Project64-rsp/Project64-rsp.vcxproj")

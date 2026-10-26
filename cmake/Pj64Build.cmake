@@ -330,15 +330,38 @@ function(pj64_wtl target)
     target_compile_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fdelayed-template-parsing -fms-extensions>)
 endfunction()
 
+# The functions of the plugin specs (Source/Project64-plugin-spec), by plugin
+# directory, and those of the settings API (Source/Settings)
+set(PJ64_EXPORTS_ALL GetDllInfo CloseDLL DllAbout DllConfig DllTest RomOpen RomClosed PluginLoaded
+    SetSettingInfo SetSettingInfo2 SetSettingInfo3 SetSettingNotificationInfo SetPluginNotification)
+set(PJ64_EXPORTS_RSP InitiateRSP DoRspCycles EnableDebugging GetRspDebugInfo InitiateRSPDebugger)
+set(PJ64_EXPORTS_GFX InitiateGFX CaptureScreen ChangeWindow DrawScreen DrawStatus MoveScreen ProcessDList
+    ProcessRDPList ShowCFB SoftReset UpdateScreen ViStatusChanged ViWidthChanged ReadScreen ReadScreen2
+    DllCrtFree GetVideoSize FBRead FBWrite FBGetFrameBufferInfo GetRomBrowserMenu OnRomBrowserMenuItem)
+set(PJ64_EXPORTS_Audio InitiateAudio AiDacrateChanged AiLenChanged AiReadLength AiUpdate ProcessAList)
+set(PJ64_EXPORTS_Input InitiateControllers ControllerCommand GetKeys ReadController RumbleCommand
+    WM_KeyDown WM_KeyUp WM_KillFocus EmulationPaused)
+
 # pj64_plugin(<target> <output name> <plugin directory>)
 #
 # A plugin library, written to <build>/Plugin/<plugin directory>/<output name>.
+# An ELF plugin exports the spec functions of its kind and nothing else: every
+# plugin links its own Common and Settings, whose globals must not bind across
+# plugins and the program.
 function(pj64_plugin target output_name plugin_dir)
     set_target_properties(${target} PROPERTIES
         PREFIX ""
         OUTPUT_NAME "${output_name}"
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/Plugin/${plugin_dir}"
         LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/Plugin/${plugin_dir}")
+    if(NOT WIN32 AND NOT APPLE)
+        list(JOIN PJ64_EXPORTS_ALL ";\n        " all)
+        list(JOIN PJ64_EXPORTS_${plugin_dir} ";\n        " kind)
+        set(map "${PJ64_GEN}/exports/${target}.map")
+        pj64_write_if_changed("${map}" "{\n    global:\n        ${all};\n        ${kind};\n    local: *;\n};\n")
+        target_link_options(${target} PRIVATE "LINKER:--version-script=${map}" "LINKER:--no-undefined")
+        set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${map}")
+    endif()
 endfunction()
 
 # pj64_vcxproj_sources(<out-var> <vcxproj> [EXCLUDE <path>...])
