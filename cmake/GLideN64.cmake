@@ -83,7 +83,7 @@ if(WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_definitions(GLideN64 PRIVATE ${gliden64_defines} _USRDLL)
     target_compile_options(GLideN64 PRIVATE ${gliden64_options})
     pj64_utf16_overlay(GLideN64 "${gln_rel}")
-    target_link_libraries(GLideN64 PRIVATE GLideNUI-wtl pj64_png opengl32 gdi32 winmm comctl32 comdlg32 ole32 shell32 uxtheme dwrite)
+    target_link_libraries(GLideN64 PRIVATE GLideNUI-wtl pj64_png Threads::Threads opengl32 gdi32 winmm comctl32 comdlg32 ole32 shell32 uxtheme dwrite)
     pj64_plugin(GLideN64 GLideN64 GFX GLideN64)
     # The settings by game, read from the plugin's directory
     add_custom_command(TARGET GLideN64 POST_BUILD COMMAND "${CMAKE_COMMAND}" -E copy_if_different
