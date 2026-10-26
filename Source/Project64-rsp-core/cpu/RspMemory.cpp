@@ -60,11 +60,13 @@ int AllocateMemory(void)
 void FreeMemory(void)
 {
     FreeAddressSpace(RecompCode, 0x00800004);
-    FreeAddressSpace(JumpTable, 0x1000 * MaxMaps);
+    // JumpTables is the reserve; JumpTable points at the current map in it
+    FreeAddressSpace(JumpTables, 0x1000 * MaxMaps);
     FreeAddressSpace(RecompCodeSecondary, 0x00200004);
 
     RecompCode = nullptr;
     JumpTables = nullptr;
+    JumpTable = nullptr;
     RecompCodeSecondary = nullptr;
 }
 

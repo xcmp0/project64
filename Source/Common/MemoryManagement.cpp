@@ -69,6 +69,12 @@ bool FreeAddressSpace(void * addr, size_t size)
     size = 0; // Unused
     return VirtualFree(addr, 0, MEM_RELEASE) != 0;
 #else
+    // As VirtualFree refuses a null address: munmap would unmap the bottom
+    // of the address space, where a non-PIE program lies
+    if (addr == nullptr)
+    {
+        return false;
+    }
     msync(addr, size, MS_SYNC);
     munmap(addr, size);
     return true;
