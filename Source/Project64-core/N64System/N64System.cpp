@@ -2356,6 +2356,7 @@ void CN64System::RefreshScreen()
     {
         g_Debugger->FrameDrawn();
     }
+    NotifyCallback(CN64SystemCB_FrameDrawn);
     WriteTrace(TraceVideoPlugin, TraceDebug, "UpdateScreen done");
     g_MMU->VideoInterface().UpdateFieldSerration((m_Reg.VI_STATUS_REG & 0x40) != 0);
 

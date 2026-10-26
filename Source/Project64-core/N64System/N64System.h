@@ -31,6 +31,7 @@ enum CN64SystemCB
 {
     CN64SystemCB_Reset,
     CN64SystemCB_LoadedGameState,
+    CN64SystemCB_FrameDrawn, // After each UpdateScreen, on the emulation thread
 };
 
 class CN64System :
