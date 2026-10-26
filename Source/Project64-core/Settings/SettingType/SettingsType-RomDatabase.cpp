@@ -67,7 +67,7 @@ void CSettingTypeRomDatabase::Initialize(void)
     g_Settings->RegisterChangeCB(Game_IniKey, nullptr, GameChanged);
     g_Settings->RegisterChangeCB(Cmd_BaseDirectory, nullptr, BaseDirChanged);
 
-    m_SectionIdent = new stdstr(g_Settings->LoadStringVal(Game_IniKey));
+    m_SectionIdent = new stdstr(DatabaseSection());
     WriteTrace(TraceAppInit, TraceDebug, "Done");
 }
 
@@ -123,12 +123,47 @@ void CSettingTypeRomDatabase::GameChanged(void * /*Data*/)
 {
     if (m_SectionIdent)
     {
-        *m_SectionIdent = g_Settings->LoadStringVal(Game_IniKey);
+        *m_SectionIdent = DatabaseSection();
 
         CIniFileBase::strlist KeyList;
         m_SettingsIniFile->GetKeyList(m_SectionIdent->c_str(), KeyList);
         g_Settings->SaveBool(Game_Known, KeyList.size() > 0);
     }
+}
+
+// The shipped databases are keyed by the ROM's CRC ident (Game_DatabaseKey). A ROM
+// they do not list takes the entry with the same internal name and country, so a
+// new build of a known game inherits its entry.
+std::string CSettingTypeRomDatabase::DatabaseSection(void)
+{
+    if (g_Settings->LoadStringVal(Game_IniKey).empty())
+    {
+        return "";
+    }
+    std::string Ident = g_Settings->LoadStringVal(Game_DatabaseKey);
+    std::string::size_type CountryPos = Ident.rfind('-');
+    if (m_SettingsIniFile == nullptr || CountryPos == std::string::npos)
+    {
+        return Ident;
+    }
+    CIniFileBase::strlist KeyList;
+    m_SettingsIniFile->GetKeyList(Ident.c_str(), KeyList);
+    if (KeyList.size() > 0)
+    {
+        return Ident;
+    }
+    std::string Country = Ident.substr(CountryPos), GameName = g_Settings->LoadStringVal(Game_GameName), InternalName;
+    CIniFile::SectionList Sections;
+    m_SettingsIniFile->GetVectorOfSections(Sections);
+    for (CIniFile::SectionList::const_iterator itr = Sections.begin(); itr != Sections.end(); itr++)
+    {
+        if (itr->size() > Country.size() && itr->compare(itr->size() - Country.size(), Country.size(), Country) == 0 &&
+            m_SettingsIniFile->GetString(itr->c_str(), "Internal Name", "", InternalName) && InternalName == GameName)
+        {
+            return *itr;
+        }
+    }
+    return Ident;
 }
 
 bool CSettingTypeRomDatabase::Load(uint32_t & Value) const

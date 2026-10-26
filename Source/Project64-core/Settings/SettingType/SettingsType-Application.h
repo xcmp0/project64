@@ -47,6 +47,7 @@ public:
     static void CleanUp(void);
     static void Flush(void);
     static void ResetAll(void);
+    static void CopySection(const char * From, const char * To);
 
     const char * GetKeyName(void) const
     {

@@ -51,6 +51,7 @@ public:
 
 protected:
     static void GameChanged(void * /*Data */);
+    static std::string DatabaseSection(void);
     static void BaseDirChanged(void * /*Data */);
 
     static bool IsVideoSetting(const char * Name);

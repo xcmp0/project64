@@ -120,6 +120,7 @@ enum SettingID
 
     // Individual game settings
     Game_IniKey,
+    Game_DatabaseKey,
     Game_File,
     Game_UniqueSaveDir,
     Game_GameName,

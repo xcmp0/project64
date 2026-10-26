@@ -89,6 +89,26 @@ void CSettingTypeRDBUser::ResetAll()
     }
 }
 
+// An empty section takes the keys of another (one-time key migration)
+void CSettingTypeRDBUser::CopySection(const char * From, const char * To)
+{
+    if (m_IniFile == nullptr)
+    {
+        return;
+    }
+    CIniFileBase::KeyValueData Keys;
+    m_IniFile->GetKeyValueData(To, Keys);
+    if (!Keys.empty())
+    {
+        return;
+    }
+    m_IniFile->GetKeyValueData(From, Keys);
+    for (CIniFileBase::KeyValueData::const_iterator itr = Keys.begin(); itr != Keys.end(); itr++)
+    {
+        m_IniFile->SaveString(To, itr->first.c_str(), itr->second.c_str());
+    }
+}
+
 void CSettingTypeRDBUser::CleanUp()
 {
     if (m_IniFile)

@@ -60,14 +60,18 @@ void CSettingTypeGame::UpdateSettings(void * /*Data */)
     m_RdbEditor = g_Settings->LoadBool(Setting_RdbEditor);
     m_EraseDefaults = g_Settings->LoadBool(Setting_EraseGameDefaults);
     stdstr SectionIdent = g_Settings->LoadStringVal(Game_IniKey);
+    // Builds of one game share the section; their database entries can differ
+    static std::string DatabaseIdent;
+    std::string Database = g_Settings->LoadStringVal(Game_DatabaseKey);
 
     if (m_SectionIdent == nullptr)
     {
         m_SectionIdent = new stdstr;
     }
-    if (SectionIdent != *m_SectionIdent)
+    if (SectionIdent != *m_SectionIdent || Database != DatabaseIdent)
     {
         *m_SectionIdent = SectionIdent;
+        DatabaseIdent = Database;
         g_Settings->SettingTypeChanged(SettingType_GameSetting);
         g_Settings->SettingTypeChanged(SettingType_RomDatabase);
     }

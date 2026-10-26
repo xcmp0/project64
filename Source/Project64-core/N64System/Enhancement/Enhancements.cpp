@@ -234,8 +234,14 @@ void CEnhancements::ResetCodes(CMipsMemoryVM * MMU)
 
 void CEnhancements::LoadEnhancements(const char * Ident, SectionFiles & Files, std::unique_ptr<CEnhancmentFile> & File, CEnhancementList & EnhancementList)
 {
+    // A list the user wrote is keyed by the game's name, a shipped one by the ROM's CRC
     std::string SectionIdent = g_Settings->LoadStringVal(Game_IniKey);
     SectionFiles::const_iterator CheatFileItr = Files.find(SectionIdent);
+    if (CheatFileItr == Files.end())
+    {
+        SectionIdent = g_Settings->LoadStringVal(Game_DatabaseKey);
+        CheatFileItr = Files.find(SectionIdent);
+    }
     bool FoundFile = false;
     if (CheatFileItr != Files.end())
     {

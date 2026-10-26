@@ -188,6 +188,7 @@ void CSettings::AddHowToHandleSetting(const char * BaseDirectory)
     AddHandler(Rdb_OverClockModifier, new CSettingTypeRomDatabase("OverClockModifier", Default_OverClockModifier));
 
     AddHandler(Game_IniKey, new CSettingTypeTempString(""));
+    AddHandler(Game_DatabaseKey, new CSettingTypeTempString(""));
     AddHandler(Game_File, new CSettingTypeTempString(""));
     AddHandler(Game_UniqueSaveDir, new CSettingTypeTempString(""));
     AddHandler(Game_GameName, new CSettingTypeTempString(""));

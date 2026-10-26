@@ -122,6 +122,26 @@ void CSettingTypeApplication::ResetAll()
     }
 }
 
+// An empty section takes the keys of another (one-time key migration)
+void CSettingTypeApplication::CopySection(const char * From, const char * To)
+{
+    if (m_SettingsIniFile == nullptr)
+    {
+        return;
+    }
+    CIniFileBase::KeyValueData Keys;
+    m_SettingsIniFile->GetKeyValueData(To, Keys);
+    if (!Keys.empty())
+    {
+        return;
+    }
+    m_SettingsIniFile->GetKeyValueData(From, Keys);
+    for (CIniFileBase::KeyValueData::const_iterator itr = Keys.begin(); itr != Keys.end(); itr++)
+    {
+        m_SettingsIniFile->SaveString(To, itr->first.c_str(), itr->second.c_str());
+    }
+}
+
 void CSettingTypeApplication::CleanUp()
 {
     if (m_SettingsIniFile)

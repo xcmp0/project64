@@ -5,6 +5,7 @@
 #include <Common/MemoryManagement.h>
 #include <Common/Platform.h>
 #include <Common/md5.h>
+#include <Project64-core/N64System/GameKeys.h>
 #include <Project64-core/N64System/Mips/Register.h>
 #include <memory>
 
@@ -215,7 +216,8 @@ void CN64Disk::SaveDiskSettingID(bool temp)
 {
     g_Settings->SaveBool(Game_TempLoaded, temp);
     g_Settings->SaveString(Game_GameName, m_RomName.c_str());
-    g_Settings->SaveString(Game_IniKey, m_DiskIdent.c_str());
+    MigrateGameKeys(m_RomName.c_str(), m_DiskIdent.c_str(), nullptr);
+    SaveGameKeys(m_RomName.c_str(), m_DiskIdent.c_str());
     //g_Settings->SaveString(Game_UniqueSaveDir, stdstr_f("%s-%s", m_RomName.c_str(), m_MD5.c_str()).c_str());
 
     switch (GetCountry())
@@ -239,7 +241,7 @@ void CN64Disk::SaveDiskSettingID(bool temp)
 void CN64Disk::ClearDiskSettingID()
 {
     g_Settings->SaveString(Game_GameName, "");
-    g_Settings->SaveString(Game_IniKey, "");
+    ClearGameKeys();
 }
 
 bool CN64Disk::AllocateDiskImage(uint32_t DiskFileSize)

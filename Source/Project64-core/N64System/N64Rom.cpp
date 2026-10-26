@@ -7,6 +7,7 @@
 #include <Common/Platform.h>
 #include <Common/md5.h>
 #include <Project64-core/3rdParty/zip.h>
+#include <Project64-core/N64System/GameKeys.h>
 #include <memory>
 
 #ifdef _WIN32
@@ -944,15 +945,16 @@ void CN64Rom::SaveRomSettingID(bool temp)
 {
     g_Settings->SaveBool(Game_TempLoaded, temp);
     g_Settings->SaveString(Game_GameName, m_RomName.c_str());
-    g_Settings->SaveString(Game_IniKey, m_RomIdent.c_str());
-    g_Settings->SaveString(Game_UniqueSaveDir, stdstr_f("%s-%s", m_RomName.c_str(), m_MD5.c_str()).c_str());
+    MigrateGameKeys(m_RomName.c_str(), m_RomIdent.c_str(), temp ? nullptr : stdstr_f("%s-%s", m_RomName.c_str(), m_MD5.c_str()).c_str());
+    SaveGameKeys(m_RomName.c_str(), m_RomIdent.c_str());
+    g_Settings->SaveString(Game_UniqueSaveDir, m_RomName.c_str());
     g_Settings->SaveDword(Game_SystemType, IsPal() ? SYSTEM_PAL : SYSTEM_NTSC);
 }
 
 void CN64Rom::ClearRomSettingID()
 {
     g_Settings->SaveString(Game_GameName, "");
-    g_Settings->SaveString(Game_IniKey, "");
+    ClearGameKeys();
 }
 
 void CN64Rom::SetError(LanguageStringID ErrorMsg)
