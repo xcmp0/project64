@@ -490,6 +490,8 @@ function(pj64_vcxproj_sources out vcxproj)
 
     # Items with an unconditional <ExcludedFromBuild>true</ExcludedFromBuild> are skipped
     file(READ "${vcxproj}" project)
+    # A changed project (files added upstream) configures again
+    set_property(DIRECTORY "${PROJECT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${vcxproj}")
     string(REGEX MATCHALL "<ClCompile Include=\"[^\"]+\">[^<]*<ExcludedFromBuild>true</ExcludedFromBuild>" skipped "${project}")
     foreach(item IN LISTS skipped)
         string(REGEX REPLACE "<ClCompile Include=\"([^\"]+)\".*" "\\1" item "${item}")
