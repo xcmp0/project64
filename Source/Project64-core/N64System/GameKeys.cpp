@@ -41,6 +41,21 @@ static void CopySaveDirectory(SettingID Directory, const char * From, const char
     }
 }
 
+void DatabaseNameIndex(CIniFile & Database, std::map<std::string, std::string> & Index)
+{
+    CIniFile::SectionList Sections;
+    Database.GetVectorOfSections(Sections);
+    std::string InternalName;
+    for (CIniFile::SectionList::const_iterator itr = Sections.begin(); itr != Sections.end(); itr++)
+    {
+        std::string::size_type CountryPos = itr->rfind('-');
+        if (CountryPos != std::string::npos && Database.GetString(itr->c_str(), "Internal Name", "", InternalName) && !InternalName.empty())
+        {
+            Index.insert(std::make_pair(InternalName + itr->substr(CountryPos), *itr));
+        }
+    }
+}
+
 void MigrateGameKeys(const char * GameName, const char * DatabaseKey, const char * OldSaveDir)
 {
     CSettingTypeRDBUser::CopySection(DatabaseKey, GameName);

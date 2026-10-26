@@ -2,6 +2,7 @@
 
 #include "RomList.h"
 #include <Project64-core/3rdParty/zip.h>
+#include <Project64-core/N64System/GameKeys.h>
 #include <Project64-core/N64System/N64Disk.h>
 #include <Project64-core/N64System/N64Rom.h>
 
@@ -603,6 +604,19 @@ void CRomList::FillRomExtensionInfo(ROM_INFO * pRomInfo)
         if (!AltIdentifier.empty())
         {
             strcpy(Identifier, AltIdentifier.c_str());
+        }
+    }
+    // Not listed: the entry with the same internal name and country, as when the ROM is opened
+    if (m_GameIdentifiers.find(Identifier) == m_GameIdentifiers.end())
+    {
+        if (m_NameIdentifiers.empty())
+        {
+            DatabaseNameIndex(*m_RomIniFile, m_NameIdentifiers);
+        }
+        std::map<std::string, std::string>::const_iterator Entry = m_NameIdentifiers.find(stdstr_f("%s-C:%X", stdstr(pRomInfo->InternalName).Trim().c_str(), pRomInfo->Country));
+        if (Entry != m_NameIdentifiers.end())
+        {
+            strcpy(Identifier, Entry->second.c_str());
         }
     }
 

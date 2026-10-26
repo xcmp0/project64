@@ -7,6 +7,7 @@
 
 #include <Common/File.h>
 #include <Project64-core/AppInit.h>
+#include <Project64-core/N64System/GameKeys.h>
 #include <Project64-core/N64System/N64Rom.h>
 #include <Project64-core/Settings.h>
 #include <filesystem>
@@ -68,6 +69,15 @@ int TestGameKeys(const fs::path & WorkDir)
     TestNotification Notify;
     std::string Base = WorkDir.string() + "/";
     CHECK(AppInit(&Notify, Base.c_str(), 0, nullptr));
+
+    {
+        // The index of the name and country fallback (ROM browser and settings)
+        CIniFile Database((WorkDir / "Config" / "Project64.rdb").string().c_str());
+        std::map<std::string, std::string> Index;
+        DatabaseNameIndex(Database, Index);
+        CHECK_EQ(Index.size(), (size_t)1);
+        CHECK_EQ(Index["TESTGAME-C:4A"], std::string(kKnownIdent));
+    }
 
     {
         CN64Rom Known;

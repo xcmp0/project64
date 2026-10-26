@@ -5,6 +5,7 @@
 #include <Common/md5.h>
 #include <Common/path.h>
 #include <Project64-core/N64System/N64Types.h>
+#include <map>
 
 class CRomList
 {
@@ -92,6 +93,7 @@ private:
 #endif
     CThread m_RefreshThread;
     CIniFileBase::SectionList m_GameIdentifiers;
+    std::map<std::string, std::string> m_NameIdentifiers;
 
 #define DISKSIZE_MAME 0x0435B0C0
 #define DISKSIZE_SDK 0x03DEC800

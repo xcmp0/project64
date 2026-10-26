@@ -2,6 +2,7 @@
 
 #include "SettingsType-RomDatabase.h"
 #include <Common/path.h>
+#include <Project64-core/N64System/GameKeys.h>
 
 CIniFile * CSettingTypeRomDatabase::m_SettingsIniFile = nullptr;
 CIniFile * CSettingTypeRomDatabase::m_VideoIniFile = nullptr;
@@ -152,18 +153,10 @@ std::string CSettingTypeRomDatabase::DatabaseSection(void)
     {
         return Ident;
     }
-    std::string Country = Ident.substr(CountryPos), GameName = g_Settings->LoadStringVal(Game_GameName), InternalName;
-    CIniFile::SectionList Sections;
-    m_SettingsIniFile->GetVectorOfSections(Sections);
-    for (CIniFile::SectionList::const_iterator itr = Sections.begin(); itr != Sections.end(); itr++)
-    {
-        if (itr->size() > Country.size() && itr->compare(itr->size() - Country.size(), Country.size(), Country) == 0 &&
-            m_SettingsIniFile->GetString(itr->c_str(), "Internal Name", "", InternalName) && InternalName == GameName)
-        {
-            return *itr;
-        }
-    }
-    return Ident;
+    std::map<std::string, std::string> Index;
+    DatabaseNameIndex(*m_SettingsIniFile, Index);
+    std::map<std::string, std::string>::const_iterator Entry = Index.find(g_Settings->LoadStringVal(Game_GameName) + Ident.substr(CountryPos));
+    return Entry != Index.end() ? Entry->second : Ident;
 }
 
 bool CSettingTypeRomDatabase::Load(uint32_t & Value) const
