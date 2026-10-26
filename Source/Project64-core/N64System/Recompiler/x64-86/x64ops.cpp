@@ -268,7 +268,9 @@ void CX64Ops::MoveConst64ToVariable(void * Variable, const char * VariableName, 
     }
     else
     {
-        g_Notify->BreakPoint(__FILE__, __LINE__);
+        mov(asmjit::x86::r11, (uintptr_t)Variable);
+        mov(asmjit::x86::dword_ptr(asmjit::x86::r11), static_cast<uint32_t>(Const));
+        mov(asmjit::x86::dword_ptr(asmjit::x86::r11, 4), static_cast<uint32_t>(Const >> 32));
     }
 }
 
@@ -448,7 +450,8 @@ void CX64Ops::XorVariableToX64reg(const asmjit::x86::Gp & Reg, void * Variable, 
     }
     else
     {
-        g_Notify->BreakPoint(__FILE__, __LINE__);
+        mov(asmjit::x86::r11, (uintptr_t)Variable);
+        xor_(Reg.r32(), asmjit::x86::dword_ptr(asmjit::x86::r11));
     }
 }
 
@@ -461,7 +464,8 @@ void CX64Ops::TestVariable(void * Variable, const char * VariableName, uint32_t 
     }
     else
     {
-        g_Notify->BreakPoint(__FILE__, __LINE__);
+        mov(asmjit::x86::r11, (uintptr_t)Variable);
+        test(asmjit::x86::dword_ptr(asmjit::x86::r11), Const);
     }
 }
 
