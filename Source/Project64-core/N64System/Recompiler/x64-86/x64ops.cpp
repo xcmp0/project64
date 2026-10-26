@@ -655,4 +655,64 @@ void CX64Ops::PopCalleeSaved(void)
     pop(asmjit::x86::rbx);
 }
 
+#ifndef _WIN32
+// A Win64 call made to a System V function: the arguments move from rcx,
+// rdx, r8, r9 to rdi, rsi, rdx, rcx; rsi and rdi, which a Win64 callee
+// preserves, are saved; the stack is aligned to 16 bytes, its pointer kept
+// in rbx, which both conventions preserve. No call passes more than four
+// arguments, and the shadow space is left unused.
+void CX64Ops::SystemVCallStart(uint32_t TargetRegs)
+{
+    // The target address must survive the argument moves
+    const uint32_t Moved = (1u << asmjit::x86::Gp::kIdCx) | (1u << asmjit::x86::Gp::kIdDx) | (1u << asmjit::x86::Gp::kIdSi) |
+                           (1u << asmjit::x86::Gp::kIdDi) | (1u << asmjit::x86::Gp::kIdBx) | (1u << asmjit::x86::Gp::kIdSp);
+    if ((TargetRegs & Moved) != 0)
+    {
+        g_Notify->BreakPoint(__FILE__, __LINE__);
+    }
+    push(asmjit::x86::rsi);
+    push(asmjit::x86::rdi);
+    push(asmjit::x86::rbx);
+    mov(asmjit::x86::rbx, asmjit::x86::rsp);
+    and_(asmjit::x86::rsp, -16);
+    mov(asmjit::x86::rdi, asmjit::x86::rcx);
+    mov(asmjit::x86::rsi, asmjit::x86::rdx);
+    mov(asmjit::x86::rdx, asmjit::x86::r8);
+    mov(asmjit::x86::rcx, asmjit::x86::r9);
+}
+
+void CX64Ops::SystemVCallEnd(void)
+{
+    mov(asmjit::x86::rsp, asmjit::x86::rbx);
+    pop(asmjit::x86::rbx);
+    pop(asmjit::x86::rdi);
+    pop(asmjit::x86::rsi);
+}
+
+asmjit::Error CX64Ops::call(const asmjit::x86::Gp & Target)
+{
+    SystemVCallStart(1u << Target.id());
+    asmjit::Error Result = asmjit::x86::Assembler::call(Target);
+    SystemVCallEnd();
+    return Result;
+}
+
+asmjit::Error CX64Ops::call(const asmjit::x86::Mem & Target)
+{
+    uint32_t TargetRegs = 0;
+    if (Target.hasBaseReg())
+    {
+        TargetRegs |= 1u << Target.baseId();
+    }
+    if (Target.hasIndexReg())
+    {
+        TargetRegs |= 1u << Target.indexId();
+    }
+    SystemVCallStart(TargetRegs);
+    asmjit::Error Result = asmjit::x86::Assembler::call(Target);
+    SystemVCallEnd();
+    return Result;
+}
+#endif
+
 #endif

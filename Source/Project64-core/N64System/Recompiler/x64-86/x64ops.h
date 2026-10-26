@@ -50,6 +50,12 @@ public:
     void CallThis(void * ThisPtr, uintptr_t FunctPtr, const char * FunctName);
     void PushCalleeSaved(void);
     void PopCalleeSaved(void);
+#ifndef _WIN32
+    // System V hosts: every call the recompiler emits follows the Win64
+    // convention; these make the call through an adapter
+    asmjit::Error call(const asmjit::x86::Gp & Target);
+    asmjit::Error call(const asmjit::x86::Mem & Target);
+#endif
 
 private:
     CX64Ops(void);
@@ -62,6 +68,10 @@ private:
     void AddNumberSymbol(uintptr_t Value, const std::string & Symbol);
 
     static void BreakPointNotification(const char * FileName, int32_t LineNumber);
+#ifndef _WIN32
+    void SystemVCallStart(uint32_t TargetRegs);
+    void SystemVCallEnd(void);
+#endif
 
     typedef struct
     {
