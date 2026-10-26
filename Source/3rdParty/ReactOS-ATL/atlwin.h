@@ -20,6 +20,10 @@
 
 #pragma once
 
+// + Project64: the CSimpleString overloads below whatever came before, as in Microsoft's ATL
+#include <atlsimpstr.h>
+// - Project64
+
 #if defined(__GNUC__) || defined(__clang__)
 #define GCCU(x)    x __attribute__((unused))
 #define Unused(x)
@@ -632,7 +636,9 @@ public:
         return ::GetDlgItemText(m_hWnd, nID, lpStr, nMaxCount);
     }
 
-#ifdef __ATLSTR_H__
+// + Project64: was __ATLSTR_H__
+#ifdef __ATLSIMPSTR_H__
+// - Project64
     UINT GetDlgItemText(_In_ int nID, _Inout_ CSimpleString& strText) const
     {
         HWND item = GetDlgItem(nID);
@@ -839,7 +845,9 @@ public:
         return ::GetWindowText(m_hWnd, lpszStringBuf, nMaxCount);
     }
 
-#ifdef __ATLSTR_H__
+// + Project64: was __ATLSTR_H__
+#ifdef __ATLSIMPSTR_H__
+// - Project64
     int GetWindowText(_Inout_ CSimpleString& strText) const
     {
         int len = GetWindowTextLength();
