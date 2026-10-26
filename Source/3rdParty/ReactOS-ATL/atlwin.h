@@ -418,6 +418,10 @@ public:
     {
         HWND hWnd;
         ATLASSERT(m_hWnd == NULL);
+        // + Project64: no rectangle means the default one, as in Microsoft's ATL
+        if (rect.m_lpRect == NULL)
+            rect.m_lpRect = &rcDefault;
+        // - Project64
         hWnd = ::CreateWindowEx(dwExStyle,
                                 lpstrWndClass,
                                 szWindowName,
