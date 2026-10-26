@@ -467,7 +467,18 @@ public:
         _pAtlModule = this;
         cbSize = sizeof(_ATL_MODULE);
         m_nLockCnt = 0;
+        // + Project64: the lock of WTL's CStaticDataInitCriticalSectionLock, as in Microsoft's ATL
+        m_pTermFuncs = NULL;
+        m_csStaticDataInitAndTypeInfo.Init();
+        // - Project64
     }
+
+    // + Project64
+    virtual ~CAtlModule()
+    {
+        m_csStaticDataInitAndTypeInfo.Term();
+    }
+    // - Project64
 
     virtual LONG GetLockCount()
     {

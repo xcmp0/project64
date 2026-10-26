@@ -1417,6 +1417,25 @@ public:
     virtual ~CWindowImplRoot()
     {
     }
+
+    // + Project64: as in Microsoft's ATL, for WTL's message crackers
+    const _ATL_MSG *GetCurrentMessage() const
+    {
+        return m_pCurrentMsg;
+    }
+
+    BOOL IsMsgHandled() const
+    {
+        ATLASSERT(m_pCurrentMsg != NULL);
+        return m_pCurrentMsg->bHandled;
+    }
+
+    void SetMsgHandled(BOOL bHandled)
+    {
+        ATLASSERT(m_pCurrentMsg != NULL);
+        const_cast<_ATL_MSG *>(m_pCurrentMsg)->bHandled = bHandled;
+    }
+    // - Project64
 };
 
 
