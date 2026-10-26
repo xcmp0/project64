@@ -1,4 +1,5 @@
-// Core tests: Project64-test <test> <work directory>
+// Core tests: Project64-test <test> <work directory>, and make-rom <file>
+// (the test ROM, for the headless frontend's test)
 
 #include "Test.h"
 
@@ -105,6 +106,12 @@ int main(int argc, char ** argv)
     {
         return TestBaseDir(argv[2]);
     }
-    fprintf(stderr, "usage: %s game-keys|base-dir <work directory>\n", argv[0]);
+    if (argc == 3 && strcmp(argv[1], "make-rom") == 0)
+    {
+        std::filesystem::create_directories(std::filesystem::path(argv[2]).parent_path());
+        WriteTestRom(argv[2], 0x11111111, 0x22222222);
+        return 0;
+    }
+    fprintf(stderr, "usage: %s game-keys|base-dir <work directory> | make-rom <file>\n", argv[0]);
     return 2;
 }

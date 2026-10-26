@@ -56,5 +56,6 @@ public:
     void ChangeFullScreen(void) const override;
 };
 
+void WriteTestRom(const std::filesystem::path & File, uint32_t Crc1, uint32_t Crc2);
 int TestGameKeys(const std::filesystem::path & WorkDir);
 int TestBaseDir(const std::filesystem::path & WorkDir);

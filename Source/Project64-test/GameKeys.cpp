@@ -21,23 +21,6 @@ namespace
 const char kKnownIdent[] = "11111111-22222222-C:4A";
 const char kNewIdent[] = "33333333-44444444-C:4A";
 
-// A minimal big-endian (.z64) image: header CRCs, internal name and country
-void WriteRom(const fs::path & File, uint32_t Crc1, uint32_t Crc2)
-{
-    std::vector<uint8_t> Image(0x101000, 0);
-    const uint8_t Magic[4] = {0x80, 0x37, 0x12, 0x40};
-    std::copy(Magic, Magic + 4, Image.begin());
-    for (int i = 0; i < 4; i++)
-    {
-        Image[0x10 + i] = (uint8_t)(Crc1 >> (24 - 8 * i));
-        Image[0x14 + i] = (uint8_t)(Crc2 >> (24 - 8 * i));
-    }
-    const char Name[20] = {'T', 'E', 'S', 'T', 'G', 'A', 'M', 'E', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
-    std::copy(Name, Name + 20, Image.begin() + 0x20);
-    Image[0x3E] = 'J';
-    std::ofstream(File, std::ios::binary).write((const char *)Image.data(), Image.size());
-}
-
 void WriteText(const fs::path & File, const char * Text)
 {
     fs::create_directories(File.parent_path());
@@ -51,6 +34,27 @@ std::string ReadText(const fs::path & File)
 }
 } // namespace
 
+// A minimal big-endian (.z64) image: header CRCs, internal name and country,
+// and boot code (run from DMEM at A4000040) that loops on itself
+void WriteTestRom(const fs::path & File, uint32_t Crc1, uint32_t Crc2)
+{
+    std::vector<uint8_t> Image(0x101000, 0);
+    const uint8_t Magic[4] = {0x80, 0x37, 0x12, 0x40};
+    std::copy(Magic, Magic + 4, Image.begin());
+    for (int i = 0; i < 4; i++)
+    {
+        Image[0x10 + i] = (uint8_t)(Crc1 >> (24 - 8 * i));
+        Image[0x14 + i] = (uint8_t)(Crc2 >> (24 - 8 * i));
+    }
+    const char Name[20] = {'T', 'E', 'S', 'T', 'G', 'A', 'M', 'E', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
+    std::copy(Name, Name + 20, Image.begin() + 0x20);
+    Image[0x3E] = 'J';
+    // j 0xA4000040; nop
+    const uint8_t Loop[8] = {0x09, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00};
+    std::copy(Loop, Loop + 8, Image.begin() + 0x40);
+    std::ofstream(File, std::ios::binary).write((const char *)Image.data(), Image.size());
+}
+
 int TestGameKeys(const fs::path & WorkDir)
 {
     TestBegin("game-keys");
@@ -63,8 +67,8 @@ int TestGameKeys(const fs::path & WorkDir)
     // User data from before the name keys: a CRC section and a <name>-<md5> save directory
     WriteText(WorkDir / "Config" / "Project64.rdb.user", "[11111111-22222222-C:4A]\nCounter Factor=1\n");
     WriteText(WorkDir / "Config" / "Project64.cfg", "[11111111-22222222-C:4A]\nCheat_Test_Active=1\n");
-    WriteRom(WorkDir / "known.z64", 0x11111111, 0x22222222);
-    WriteRom(WorkDir / "new.z64", 0x33333333, 0x44444444);
+    WriteTestRom(WorkDir / "known.z64", 0x11111111, 0x22222222);
+    WriteTestRom(WorkDir / "new.z64", 0x33333333, 0x44444444);
 
     TestNotification Notify;
     std::string Base = WorkDir.string() + "/";
