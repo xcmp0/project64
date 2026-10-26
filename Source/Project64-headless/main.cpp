@@ -62,6 +62,8 @@ const char Usage[] =
     "  --timeout <s>        stop after s seconds of wall time (default: none)\n"
     "  --keep-going         run on after the core reports an error (default: stop)\n"
     "  --basedir <dir>      settings and data directory (default: the program's)\n"
+    "  --save-dir <dir>     game saves (default: the base directory's Save/);\n"
+    "                       an empty one starts the game afresh\n"
     "  --verbose            print the core's messages\n"
     "exit code: 0 done, 1 an error was reported, 2 bad arguments or ROM,\n"
     "           3 timeout, 4 emulation stopped early\n";
@@ -74,6 +76,7 @@ struct Options
     std::string Gfx, Rsp, Audio, Input;
     std::string Wav, Script;
     std::string DumpDir;
+    std::string SaveDir;
     std::set<uint32_t> DumpAt;
     uint32_t DumpEvery = 0;
     uint32_t Frames = 600;
@@ -356,6 +359,10 @@ bool ParseOptions(int argc, char ** argv)
         {
             g_Options.BaseDir = Value;
         }
+        else if (Option == "--save-dir")
+        {
+            g_Options.SaveDir = Value;
+        }
         else
         {
             ok = false;
@@ -524,6 +531,20 @@ void ApplyOptions(void)
     if (!g_Options.Input.empty())
     {
         g_Settings->SaveString(Plugin_CONT_Current, g_Options.Input.c_str());
+    }
+    if (!g_Options.SaveDir.empty())
+    {
+        std::string SaveDir = FullPath(g_Options.SaveDir);
+        if (SaveDir.back() != '/')
+        {
+            SaveDir += '/';
+        }
+        g_Settings->SaveString(Directory_NativeSaveSelected, SaveDir.c_str());
+        g_Settings->SaveBool(Directory_NativeSaveUseSelected, true);
+    }
+    else
+    {
+        g_Settings->SaveBool(Directory_NativeSaveUseSelected, false);
     }
     SetPluginSetting("WavFile", FullPath(g_Options.Wav), &g_WavSetting);
     SetPluginSetting("ScriptFile", FullPath(g_Options.Script));
