@@ -15,9 +15,18 @@ if(TARGET Project64-headless)
     set(headless_dir "${PROJECT_BINARY_DIR}/test/headless")
     add_test(NAME headless-rom COMMAND Project64-test make-rom "${headless_dir}/loop.z64")
     set_tests_properties(headless-rom PROPERTIES FIXTURES_SETUP headless)
-    add_test(NAME headless-interpreter COMMAND Project64-headless --frames 120 --cpu interpreter
-        --gfx GFX/Project64-Video-Null.so --rsp RSP/Project64-RSP.so
-        --audio Audio/Project64-Audio-Wav.so --input Input/Project64-Input-Script.so
-        --wav "${headless_dir}/audio.wav" --dump "${headless_dir}" "${headless_dir}/loop.z64")
-    set_tests_properties(headless-interpreter PROPERTIES FIXTURES_REQUIRED headless TIMEOUT 120)
+    # The x64 recompiler on its own and checked against the interpreter (sync)
+    set(headless_cpus interpreter)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+        list(APPEND headless_cpus recompiler sync)
+    endif()
+    foreach(cpu IN LISTS headless_cpus)
+        add_test(NAME headless-${cpu} COMMAND Project64-headless --frames 120 --cpu ${cpu}
+            --gfx GFX/Project64-Video-Null.so --rsp RSP/Project64-RSP.so
+            --audio Audio/Project64-Audio-Wav.so --input Input/Project64-Input-Script.so
+            --wav "${headless_dir}/audio-${cpu}.wav" --dump "${headless_dir}" "${headless_dir}/loop.z64")
+        # One base directory (the build tree): one run at a time
+        set_tests_properties(headless-${cpu} PROPERTIES
+            FIXTURES_REQUIRED headless RESOURCE_LOCK headless-basedir TIMEOUT 120)
+    endforeach()
 endif()

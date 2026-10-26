@@ -35,7 +35,9 @@ std::string ReadText(const fs::path & File)
 } // namespace
 
 // A minimal big-endian (.z64) image: header CRCs, internal name and country,
-// and boot code (run from DMEM at A4000040) that loops on itself
+// and boot code (run from DMEM at A4000040) that puts a counting loop at
+// 80000400 and jumps to it. Filler after the code gives the boot area the
+// word sum of a CIC-NUS-6102 boot, so the core knows the chip.
 void WriteTestRom(const fs::path & File, uint32_t Crc1, uint32_t Crc2)
 {
     std::vector<uint8_t> Image(0x101000, 0);
@@ -49,9 +51,30 @@ void WriteTestRom(const fs::path & File, uint32_t Crc1, uint32_t Crc2)
     const char Name[20] = {'T', 'E', 'S', 'T', 'G', 'A', 'M', 'E', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
     std::copy(Name, Name + 20, Image.begin() + 0x20);
     Image[0x3E] = 'J';
-    // j 0xA4000040; nop
-    const uint8_t Loop[8] = {0x09, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00};
-    std::copy(Loop, Loop + 8, Image.begin() + 0x40);
+    const uint32_t Boot[] = {
+        0x3C088000, // lui t0, 0x8000
+        0x3C09256B, // lui t1, 0x256B         t1 = addiu t3, t3, 1
+        0x35290001, // ori t1, t1, 0x0001
+        0xAD090400, // sw t1, 0x400(t0)
+        0x3C090800, // lui t1, 0x0800         t1 = j 0x80000400
+        0x35290100, // ori t1, t1, 0x0100
+        0xAD090404, // sw t1, 0x404(t0)
+        0xAD000408, // sw zero, 0x408(t0)     nop (delay slot)
+        0x350A0400, // ori t2, t0, 0x0400
+        0x01400008, // jr t2
+        0x00000000, // nop
+    };
+    uint64_t Missing = 0x000000D057C85244;
+    size_t Offset = 0x40;
+    for (size_t i = 0; i < sizeof(Boot) / sizeof(Boot[0]) || Missing != 0; i++, Offset += 4)
+    {
+        uint32_t Word = i < sizeof(Boot) / sizeof(Boot[0]) ? Boot[i] : (uint32_t)std::min<uint64_t>(Missing, 0xFFFFFFFF);
+        Missing -= Word;
+        for (int b = 0; b < 4; b++)
+        {
+            Image[Offset + b] = (uint8_t)(Word >> (24 - 8 * b));
+        }
+    }
     std::ofstream(File, std::ios::binary).write((const char *)Image.data(), Image.size());
 }
 
