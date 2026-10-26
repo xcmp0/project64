@@ -4,52 +4,57 @@
 
 class CProjectSupport
 {
-    typedef struct
-    {
-        char Code[300];
-        char Email[300];
-        char Name[300];
-        char MachineID[300];
-        uint32_t RunCount;
-        time_t LastUpdated;
-        time_t LastShown;
-        bool Validated;
-    } SupportInfo;
 
 public:
-    CProjectSupport();
+    inline CProjectSupport(){};
 
-    bool RequestCode(const char * Email);
-    bool ValidateCode(const char * Code);
-    void IncrementRunCount();
-    bool ShowSupportWindow();
+    inline bool RequestCode(const char * Email)
+    {
+        return true;
+    };
+    inline bool ValidateCode(const char * Code)
+    {
+        return true;
+    };
+    inline void IncrementRunCount(){};
+    inline bool ShowSupportWindow()
+    {
+        return false;
+    };
 
     inline uint32_t RunCount() const
     {
-        return m_SupportInfo.RunCount;
+        return 0x0;
     }
     inline const char * Name(void) const
     {
-        return m_SupportInfo.Name;
+        return "";
     }
     inline const char * MachineID(void) const
     {
-        return m_SupportInfo.MachineID;
+        return "";
     }
     inline bool Validated(void) const
     {
-        return m_SupportInfo.Validated;
+        return true;
     }
 
 private:
-    CProjectSupport(const CProjectSupport &);
-    CProjectSupport & operator=(const CProjectSupport &);
+    inline CProjectSupport(const CProjectSupport &){};
+    inline CProjectSupport & operator=(const CProjectSupport &)
+    {
+        return *this;
+    };
 
-    std::string GenerateMachineID();
-    bool PerformRequest(const wchar_t * Url, const std::string & PostData, DWORD & StatusCode, std::vector<std::string> & Headers);
+    inline std::string GenerateMachineID()
+    {
+        return std::string();
+    };
+    inline bool PerformRequest(const wchar_t * Url, const std::string & PostData, DWORD & StatusCode, std::vector<std::string> & Headers)
+    {
+        return true;
+    };
 
-    void SaveSupportInfo(void);
-    void LoadSupportInfo(void);
-
-    SupportInfo m_SupportInfo;
+    inline void SaveSupportInfo(void){};
+    inline void LoadSupportInfo(void){};
 };
