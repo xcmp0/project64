@@ -177,6 +177,73 @@ function(pj64_case_includes dir sources)
     endforeach()
 endfunction()
 
+# pj64_windows_includes(<dir> <sources> <root>...)
+#
+# The case-blind, backslash-tolerant includes of sources written for Windows
+# only (no shared roots, unlike the two functions above): for every #include
+# whose name has a backslash or matches only ignoring case, a file of that
+# exact name in <dir> includes the real file. The sources and every header
+# under the roots are read. "Quoted" names are looked up from the including
+# file's directory first, then in the roots; <angled> names in the roots and
+# the system headers.
+function(pj64_windows_includes dir sources)
+    set(roots ${ARGN})
+    set(system_roots ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+    set(files ${sources})
+    foreach(root IN LISTS roots)
+        file(GLOB_RECURSE headers "${root}/*.h" "${root}/*.hpp" "${root}/*.inl")
+        list(APPEND files ${headers})
+    endforeach()
+    list(REMOVE_DUPLICATES files)
+    file(REMOVE_RECURSE "${dir}")
+    set(done "")
+    foreach(source IN LISTS files)
+        get_filename_component(source_dir "${source}" DIRECTORY)
+        file(STRINGS "${source}" lines REGEX "^[ \t]*#[ \t]*include[ \t]*[<\"][^>\"]+[>\"]")
+        foreach(line IN LISTS lines)
+            string(REGEX REPLACE "^[ \t]*#[ \t]*include[ \t]*([<\"])([^>\"]+)[>\"].*" "\\1" kind "${line}")
+            string(REGEX REPLACE "^[ \t]*#[ \t]*include[ \t]*[<\"]([^>\"]+)[>\"].*" "\\1" name "${line}")
+            if(name IN_LIST done)
+                continue()
+            endif()
+            string(REPLACE "\\" "/" path "${name}")
+            set(search ${roots} ${system_roots})
+            if(kind STREQUAL "\"")
+                list(PREPEND search "${source_dir}")
+            endif()
+            set(real "")
+            foreach(root IN LISTS search)
+                if(EXISTS "${root}/${path}")
+                    set(real "${root}/${path}")
+                    break()
+                endif()
+            endforeach()
+            set(exact TRUE)
+            if(real STREQUAL "")
+                set(exact FALSE)
+                foreach(root IN LISTS search)
+                    pj64_find_nocase(real "${root}" "${path}")
+                    if(NOT real STREQUAL "")
+                        break()
+                    endif()
+                endforeach()
+            endif()
+            if(real STREQUAL "")
+                continue()
+            endif()
+            list(APPEND done "${name}")
+            # Clang with -fms-extensions turns the backslashes into slashes
+            # itself; without, they stay part of the name
+            if(NOT path STREQUAL name)
+                file(WRITE "${dir}/${name}" "#include \"${real}\"\n")
+            endif()
+            if(NOT exact)
+                file(WRITE "${dir}/${path}" "#include \"${real}\"\n")
+            endif()
+        endforeach()
+    endforeach()
+endfunction()
+
 # Include roots shared by every Project64 target (PropertySheets/Platform.props).
 # Generated headers come first, so a Version.h left in Source by an MSVC build
 # does not shadow the one generated here.
@@ -208,19 +275,34 @@ function(pj64_target target project_dir)
         # What MSVC only warns about: register, narrowing in braces and case labels
         $<$<COMPILE_LANG_AND_ID:CXX,Clang>:-Wno-register -Wno-c++11-narrowing>
         $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wno-register -Wno-narrowing>)
-    # UTF-16 headers: the compiler reads their UTF-8 copies in their place
-    pj64_utf16_headers(converted "${project_dir}")
-    if(converted)
+    pj64_utf16_overlay(${target} "${project_dir}")
+endfunction()
+
+# pj64_utf16_overlay(<target> <directory>...)
+#
+# The UTF-16 headers of the directories (under Source): <target> reads their
+# UTF-8 copies in their place, through a Clang VFS overlay.
+function(pj64_utf16_overlay target)
+    set(roots "")
+    foreach(dir IN LISTS ARGN)
+        pj64_utf16_headers(converted "${dir}")
+        if(NOT converted)
+            continue()
+        endif()
         if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-            message(FATAL_ERROR "${project_dir} has UTF-16 headers (${converted}), which only Clang can read (through a VFS overlay)")
+            message(FATAL_ERROR "${dir} has UTF-16 headers (${converted}), which only Clang can read (through a VFS overlay)")
         endif()
         set(files "")
         foreach(name IN LISTS converted)
-            list(APPEND files "{'name': '${name}', 'type': 'file', 'external-contents': '${PJ64_GEN}/Source/${project_dir}/${name}'}")
+            list(APPEND files "{'name': '${name}', 'type': 'file', 'external-contents': '${PJ64_GEN}/Source/${dir}/${name}'}")
         endforeach()
         list(JOIN files ", " files)
+        list(APPEND roots "{'name': '${PJ64_SRC}/${dir}', 'type': 'directory', 'contents': [${files}]}")
+    endforeach()
+    if(roots)
+        list(JOIN roots ", " roots)
         set(overlay "${PJ64_GEN}/vfs/${target}.yaml")
-        file(WRITE "${overlay}" "{'version': 0, 'roots': [{'name': '${PJ64_SRC}/${project_dir}', 'type': 'directory', 'contents': [${files}]}]}\n")
+        file(WRITE "${overlay}" "{'version': 0, 'roots': [${roots}]}\n")
         target_compile_options(${target} PRIVATE "SHELL:-ivfsoverlay \"${overlay}\"")
     endif()
 endfunction()
@@ -315,6 +397,18 @@ function(pj64_rc out rc)
         set(text "${before}${after}")
         string(FIND "${text}" "DLGINIT" pos)
     endwhile()
+    # Resource scripts it includes get the same treatment, and the include
+    # names their copy (written Windows-style: "GLideNUI-wtl\\GLideNUI.rc")
+    string(REGEX MATCHALL "#include[ \t]+\"[^\"\n]+\\.rc\"" nested "${text}")
+    foreach(line IN LISTS nested)
+        string(REGEX REPLACE ".*\"([^\"]+)\"$" "\\1" name "${line}")
+        string(REPLACE "\\" "/" path "${name}")
+        pj64_find_nocase(real "${rc_dir}" "${path}")
+        if(NOT real STREQUAL "")
+            pj64_rc(nested_copy "${real}")
+            string(REPLACE "\"${name}\"" "\"${nested_copy}\"" text "${text}")
+        endif()
+    endforeach()
     set(copy "${PJ64_GEN}/Source/${rc_rel}/${rc_name}")
     pj64_write_if_changed("${copy}" "${text}")
     set_property(DIRECTORY "${PROJECT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${rc}")
@@ -346,18 +440,23 @@ set(PJ64_EXPORTS_Audio InitiateAudio AiDacrateChanged AiLenChanged AiReadLength 
 set(PJ64_EXPORTS_Input InitiateControllers ControllerCommand GetKeys ReadController RumbleCommand
     WM_KeyDown WM_KeyUp WM_KillFocus EmulationPaused)
 
-# pj64_plugin(<target> <output name> <plugin directory>)
+# pj64_plugin(<target> <output name> <plugin directory> [<subdirectory>])
 #
-# A plugin library, written to <build>/Plugin/<plugin directory>/<output name>.
+# A plugin library, written to <build>/Plugin/<plugin directory>/<output name>,
+# or into a subdirectory of it (a plugin with files of its own, as installed).
 # An ELF plugin exports the spec functions of its kind and nothing else: every
 # plugin links its own Common and Settings, whose globals must not bind across
 # plugins and the program.
 function(pj64_plugin target output_name plugin_dir)
+    set(output_dir "${PROJECT_BINARY_DIR}/Plugin/${plugin_dir}")
+    if(ARGC GREATER 3)
+        set(output_dir "${output_dir}/${ARGV3}")
+    endif()
     set_target_properties(${target} PROPERTIES
         PREFIX ""
         OUTPUT_NAME "${output_name}"
-        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/Plugin/${plugin_dir}"
-        LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/Plugin/${plugin_dir}")
+        RUNTIME_OUTPUT_DIRECTORY "${output_dir}"
+        LIBRARY_OUTPUT_DIRECTORY "${output_dir}")
     if(NOT WIN32 AND NOT APPLE)
         list(JOIN PJ64_EXPORTS_ALL ";\n        " all)
         list(JOIN PJ64_EXPORTS_${plugin_dir} ";\n        " kind)
