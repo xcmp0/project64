@@ -4,7 +4,8 @@
  * The sources are written against MSVC, whose headers pull in much of the C
  * library and the SSE intrinsics implicitly, and which provides a few names of
  * its own. This header supplies the same, so the upstream files build
- * unchanged. It declares; it changes no behaviour.
+ * unchanged: the headers MSVC includes implicitly, and POSIX stand-ins for the
+ * MSVC-only names the code uses.
  */
 #pragma once
 
