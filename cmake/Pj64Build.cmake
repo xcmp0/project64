@@ -41,9 +41,16 @@ endif()
 # (a\b.h) that includes the real header by its full path, so the real file
 # keeps its own directory for its "relative" includes.
 function(pj64_backslash_includes dir)
-    file(GLOB_RECURSE sources LIST_DIRECTORIES false
-        "${PJ64_SRC}/*.h" "${PJ64_SRC}/*.hpp" "${PJ64_SRC}/*.c" "${PJ64_SRC}/*.cpp")
-    list(FILTER sources EXCLUDE REGEX "/Source/(3rdParty|GLideN64)/")
+    file(GLOB projects LIST_DIRECTORIES true "${PJ64_SRC}/*")
+    list(FILTER projects EXCLUDE REGEX "/Source/(3rdParty|GLideN64)$")
+    set(sources "")
+    foreach(project IN LISTS projects)
+        if(IS_DIRECTORY "${project}")
+            file(GLOB_RECURSE found LIST_DIRECTORIES false
+                "${project}/*.h" "${project}/*.hpp" "${project}/*.c" "${project}/*.cpp")
+            list(APPEND sources ${found})
+        endif()
+    endforeach()
     set(names "")
     foreach(source IN LISTS sources)
         file(STRINGS "${source}" lines REGEX "^[ \t]*#[ \t]*include[ \t]*<[^>]*\\\\[^>]*>")
@@ -95,9 +102,9 @@ endfunction()
 #
 # Reads the <ClCompile Include="..."> items of an upstream project file and
 # returns them as absolute paths. EXCLUDE takes paths as written in the
-# project file (either slash, any case). Each item is matched case-blind
-# against the files on disk and returned with the on-disk spelling, because
-# the project files were written for a case-blind file system.
+# project file (either slash, any case). The project files were written for a
+# case-blind file system: an item not found as written is matched case-blind
+# against the files on disk and returned with the on-disk spelling.
 function(pj64_vcxproj_sources out vcxproj)
     cmake_parse_arguments(ARG "" "" "EXCLUDE" ${ARGN})
     get_filename_component(dir "${vcxproj}" DIRECTORY)
@@ -109,11 +116,9 @@ function(pj64_vcxproj_sources out vcxproj)
         list(APPEND excluded "${item}")
     endforeach()
 
-    file(GLOB_RECURSE disk LIST_DIRECTORIES false RELATIVE "${dir}" "${dir}/*")
-    string(TOLOWER "${disk}" disk_lower)
-
     file(STRINGS "${vcxproj}" lines REGEX "<ClCompile Include=\"[^\"]+\"")
     set(files "")
+    set(disk_listed FALSE)
     foreach(line IN LISTS lines)
         string(REGEX REPLACE ".*<ClCompile Include=\"([^\"]+)\".*" "\\1" item "${line}")
         string(REPLACE "\\" "/" item "${item}")
@@ -121,11 +126,18 @@ function(pj64_vcxproj_sources out vcxproj)
         if(item_lower IN_LIST excluded)
             continue()
         endif()
-        list(FIND disk_lower "${item_lower}" index)
-        if(index LESS 0)
-            message(FATAL_ERROR "${vcxproj}: ${item} not found")
+        if(NOT EXISTS "${dir}/${item}")
+            if(NOT disk_listed)
+                file(GLOB_RECURSE disk LIST_DIRECTORIES false RELATIVE "${dir}" "${dir}/*")
+                string(TOLOWER "${disk}" disk_lower)
+                set(disk_listed TRUE)
+            endif()
+            list(FIND disk_lower "${item_lower}" index)
+            if(index LESS 0)
+                message(FATAL_ERROR "${vcxproj}: ${item} not found")
+            endif()
+            list(GET disk ${index} item)
         endif()
-        list(GET disk ${index} item)
         list(APPEND files "${dir}/${item}")
     endforeach()
     set(${out} "${files}" PARENT_SCOPE)
