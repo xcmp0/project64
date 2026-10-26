@@ -1170,9 +1170,9 @@ bool CPath::CopyTo(const char * lpcszTargetFile, bool bOverwrite)
                 res = false;
                 break;
             }
-            if (!feof(infile))
+            if (bytes > 0)
             {
-                size_t written = fwrite(buffer, 1, sizeof(buffer), outfile);
+                fwrite(buffer, 1, bytes, outfile);
             }
             if (ferror(outfile))
             {
