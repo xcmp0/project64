@@ -134,14 +134,14 @@ void RspAssembler::CallFunc(void * FunctPtr, const char * FunctName)
     call(asmjit::x86::r11);
 }
 
-#ifdef _MSC_VER
+#ifdef _WIN32
 void RspAssembler::CallThis(void * ThisPtr, void * FunctPtr, const char * FunctName)
 {
     mov(asmjit::x86::rcx, ThisPtr);
     CallFunc(FunctPtr, FunctName);
 }
 #else
-void CX86Ops::CallThis(uint64_t ThisPtr, uint64_t FunctPtr, const char * FunctName)
+void RspAssembler::CallThis(void * ThisPtr, void * FunctPtr, const char * FunctName)
 {
     mov(asmjit::x86::rdi, ThisPtr);
     CallFunc(FunctPtr, FunctName);

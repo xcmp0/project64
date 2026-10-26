@@ -458,7 +458,7 @@ bool CRSPRecompiler::CompileSubFunctions(RspCodeBlocks & Functions, const RspCod
         {
             if (!CompileSubFunctions(Functions, FuncCodeBlock->GetFunctionCalls()))
             {
-                return nullptr;
+                return false;
             }
             CompileCodeBlock(*FuncCodeBlock);
         }

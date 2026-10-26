@@ -125,6 +125,7 @@ public:
         return (cycles / (cpuFreqGHz * 1e9)) * 1000.0;
     }
 
+#ifdef WIN32
     double MeasureCpuFrequencyGHz()
     {
         DWORD_PTR oldMask = SetThreadAffinityMask(GetCurrentThread(), 1);
@@ -138,6 +139,7 @@ public:
         uint64_t elapsed_cycles = end_cycles - start_cycles;
         return static_cast<double>(elapsed_cycles) / (elapsed_seconds * 1e9);
     }
+#endif
     void GenerateLog(void)
     {
         stdstr LogFileName;

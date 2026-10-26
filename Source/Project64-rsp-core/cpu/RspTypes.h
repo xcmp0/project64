@@ -58,7 +58,7 @@ private:
 #endif
 #if defined(__amd64__) || defined(_M_X64)
 #if defined(_MSC_VER)
-    uint64_t m_Reg[6] alignas(16);
+    alignas(16) uint64_t m_Reg[6];
 #else
     uint64_t m_Reg[6];
 #endif
@@ -82,7 +82,7 @@ public:
 
 private:
 #if defined(_MSC_VER)
-    uint64_t m_Reg[2] alignas(16);
+    alignas(16) uint64_t m_Reg[2];
 #else
     uint64_t m_Reg[2];
 #endif
