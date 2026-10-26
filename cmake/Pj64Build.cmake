@@ -204,34 +204,98 @@ function(pj64_target target project_dir)
         # What MSVC only warns about: register, narrowing in braces and case labels
         $<$<COMPILE_LANG_AND_ID:CXX,Clang>:-Wno-register -Wno-c++11-narrowing>
         $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wno-register -Wno-narrowing>)
+    # UTF-16 headers: the compiler reads their UTF-8 copies in their place
+    pj64_utf16_headers(converted "${project_dir}")
+    if(converted)
+        if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            message(FATAL_ERROR "${project_dir} has UTF-16 headers (${converted}), which only Clang can read (through a VFS overlay)")
+        endif()
+        set(files "")
+        foreach(name IN LISTS converted)
+            list(APPEND files "{'name': '${name}', 'type': 'file', 'external-contents': '${PJ64_GEN}/Source/${project_dir}/${name}'}")
+        endforeach()
+        list(JOIN files ", " files)
+        set(overlay "${PJ64_GEN}/vfs/${target}.yaml")
+        file(WRITE "${overlay}" "{'version': 0, 'roots': [{'name': '${PJ64_SRC}/${project_dir}', 'type': 'directory', 'contents': [${files}]}]}\n")
+        target_compile_options(${target} PRIVATE "SHELL:-ivfsoverlay \"${overlay}\"")
+    endif()
+endfunction()
+
+# pj64_utf16_text(<out-var> <file>)
+#
+# The text of a file, decoded from UTF-16 (little-endian, with a byte order
+# mark) when it is saved that way, as Visual Studio does with some resource
+# scripts and headers. GCC, Clang and windres read only 8-bit text.
+function(pj64_utf16_text out file)
+    file(READ "${file}" bom LIMIT 2 HEX)
+    if(bom STREQUAL "fffe")
+        file(STRINGS "${file}" text ENCODING UTF-16LE NEWLINE_CONSUME)
+    else()
+        file(READ "${file}" text)
+    endif()
+    set(${out} "${text}" PARENT_SCOPE)
+endfunction()
+
+# pj64_utf16_headers(<out-var> <directory>)
+#
+# Writes UTF-8 copies of the UTF-16 headers of <directory> (under Source) to
+# the same place in the generated tree and returns their names.
+function(pj64_utf16_headers out dir)
+    file(GLOB headers "${PJ64_SRC}/${dir}/*.h")
+    set(names "")
+    foreach(header IN LISTS headers)
+        file(READ "${header}" bom LIMIT 2 HEX)
+        if(bom STREQUAL "fffe")
+            get_filename_component(name "${header}" NAME)
+            pj64_utf16_text(text "${header}")
+            pj64_write_if_changed("${PJ64_GEN}/Source/${dir}/${name}" "${text}")
+            set_property(DIRECTORY "${PROJECT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${header}")
+            list(APPEND names "${name}")
+        endif()
+    endforeach()
+    set(${out} "${names}" PARENT_SCOPE)
+endfunction()
+
+# pj64_write_if_changed(<file> <text>)
+function(pj64_write_if_changed file text)
+    set(old "")
+    if(EXISTS "${file}")
+        file(READ "${file}" old)
+    endif()
+    if(NOT old STREQUAL text)
+        file(WRITE "${file}" "${text}")
+    endif()
 endfunction()
 
 # pj64_rc(<out-var> <rc file>)
 #
-# Resource scripts name their icons, bitmaps and cursors Windows-style
-# ("Icons\\PJ64.ICO"). Cross-compiling on a host that is not Windows, this
-# writes a copy of the script with those names replaced by the matching files
-# (case-blind) and returns it; otherwise it returns the script itself. The
-# script's own directory must be on its include path for its #includes. The copy
-# also leaves out what windres does not read.
+# Writes the copy of a resource script that windres reads and returns it: the
+# script decoded from UTF-16 when it is saved that way, without what windres
+# does not read (DLGINIT), and when cross-compiling on a host that is not
+# Windows, with the Windows-style names of its icons, bitmaps and cursors
+# ("Icons\\PJ64.ICO") replaced by the matching files (case-blind). The copy
+# sits in the generated tree where the script sits in Source, next to the
+# generated Version.h and the UTF-8 copies of UTF-16 headers, so its quoted
+# includes find those first; the script's own directory follows on its include
+# path.
 function(pj64_rc out rc)
-    if(CMAKE_HOST_WIN32)
-        set(${out} "${rc}" PARENT_SCOPE)
-        return()
-    endif()
     get_filename_component(rc_dir "${rc}" DIRECTORY)
     get_filename_component(rc_name "${rc}" NAME)
-    file(READ "${rc}" text)
-    string(REGEX MATCHALL "[ \t](ICON|BITMAP|CURSOR|PNG|RCDATA|HTML)[ \t]+(DISCARDABLE[ \t]+)?\"[^\"\n]+\"" refs "${text}")
-    foreach(ref IN LISTS refs)
-        string(REGEX REPLACE ".*\"([^\"]+)\"$" "\\1" name "${ref}")
-        string(REPLACE "\\\\" "/" path "${name}")
-        string(REPLACE "\\" "/" path "${path}")
-        pj64_find_nocase(real "${rc_dir}" "${path}")
-        if(NOT real STREQUAL "")
-            string(REPLACE "\"${name}\"" "\"${real}\"" text "${text}")
-        endif()
-    endforeach()
+    file(RELATIVE_PATH rc_rel "${PJ64_SRC}" "${rc_dir}")
+    pj64_utf16_text(text "${rc}")
+    pj64_utf16_headers(converted "${rc_rel}")
+    if(NOT CMAKE_HOST_WIN32)
+        string(REGEX MATCHALL "[ \t](ICON|BITMAP|CURSOR|PNG|RCDATA|HTML)[ \t]+(DISCARDABLE[ \t]+)?\"[^\"\n]+\"" refs "${text}")
+        foreach(ref IN LISTS refs)
+            string(REGEX REPLACE ".*\"([^\"]+)\"$" "\\1" name "${ref}")
+            string(REPLACE "\\\\" "/" path "${name}")
+            string(REPLACE "\\" "/" path "${path}")
+            pj64_find_nocase(real "${rc_dir}" "${path}")
+            if(NOT real STREQUAL "")
+                string(REPLACE "\"${name}\"" "\"${real}\"" text "${text}")
+            endif()
+        endforeach()
+    endif()
     # DLGINIT blocks (combo box items for MFC and ActiveX hosts) are MSVC-only;
     # WTL dialogs never read them
     string(FIND "${text}" "DLGINIT" pos)
@@ -247,13 +311,10 @@ function(pj64_rc out rc)
         set(text "${before}${after}")
         string(FIND "${text}" "DLGINIT" pos)
     endwhile()
-    set(copy "${PJ64_GEN}/rc/${rc_name}")
-    file(WRITE "${copy}" "${text}")
-    # Its directory, and the same place in the generated tree for relative
-    # includes of generated headers (../Project64-core/Version.h)
-    file(RELATIVE_PATH rc_rel "${PJ64_SRC}" "${rc_dir}")
-    file(MAKE_DIRECTORY "${PJ64_GEN}/Source/${rc_rel}")
-    set_property(SOURCE "${copy}" APPEND PROPERTY INCLUDE_DIRECTORIES "${rc_dir}" "${PJ64_GEN}/Source/${rc_rel}")
+    set(copy "${PJ64_GEN}/Source/${rc_rel}/${rc_name}")
+    pj64_write_if_changed("${copy}" "${text}")
+    set_property(DIRECTORY "${PROJECT_SOURCE_DIR}" APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${rc}")
+    set_property(SOURCE "${copy}" APPEND PROPERTY INCLUDE_DIRECTORIES "${rc_dir}")
     set(${out} "${copy}" PARENT_SCOPE)
 endfunction()
 
