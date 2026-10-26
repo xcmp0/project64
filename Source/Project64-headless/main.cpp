@@ -590,6 +590,11 @@ int Run(void)
     }
     if (!g_Options.DumpDir.empty())
     {
+        CPath DumpDir(FullPath(g_Options.DumpDir).c_str(), "");
+        if (!DumpDir.DirectoryExists())
+        {
+            DumpDir.DirectoryCreate();
+        }
         FindReadScreen();
     }
 
