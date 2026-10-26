@@ -48,6 +48,8 @@ public:
     void X64BreakPoint(const char * FileName, int32_t LineNumber);
     void CallFunc(uintptr_t FunctPtr, const char * FunctName);
     void CallThis(void * ThisPtr, uintptr_t FunctPtr, const char * FunctName);
+    void PushCalleeSaved(void);
+    void PopCalleeSaved(void);
 
 private:
     CX64Ops(void);

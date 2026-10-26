@@ -3259,7 +3259,10 @@ void CX64RecompilerOps::UnknownOpcode()
 
 void CX64RecompilerOps::EnterCodeBlock()
 {
+    m_ColdEntryOffset = (uint32_t)m_Assembler.offset();
+    m_Assembler.PushCalleeSaved();
     m_Assembler.sub(asmjit::x86::rsp, FunctionStackSize);
+    m_WarmEntryOffset = (uint32_t)m_Assembler.offset();
 }
 
 void CX64RecompilerOps::CompileExitCode()
@@ -3562,6 +3565,7 @@ void CX64RecompilerOps::ExitCodeBlock(void)
         m_Assembler.add(asmjit::x86::rsp, 32);
     }
     m_Assembler.add(asmjit::x86::rsp, FunctionStackSize);
+    m_Assembler.PopCalleeSaved();
     m_Assembler.ret();
 }
 

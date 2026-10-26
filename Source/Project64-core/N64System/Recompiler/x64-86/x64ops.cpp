@@ -624,4 +624,31 @@ void CX64Ops::CallThis(void * ThisPtr, uintptr_t FunctPtr, const char * FunctNam
     CallFunc(FunctPtr, FunctName);
 }
 
+// Compiled blocks keep MIPS registers in host registers that their C++ caller
+// expects preserved (Win64: rbx, rbp, rdi, rsi, r12-r15; System V needs a
+// subset). Eight pushes keep the stack alignment.
+void CX64Ops::PushCalleeSaved(void)
+{
+    push(asmjit::x86::rbx);
+    push(asmjit::x86::rbp);
+    push(asmjit::x86::rdi);
+    push(asmjit::x86::rsi);
+    push(asmjit::x86::r12);
+    push(asmjit::x86::r13);
+    push(asmjit::x86::r14);
+    push(asmjit::x86::r15);
+}
+
+void CX64Ops::PopCalleeSaved(void)
+{
+    pop(asmjit::x86::r15);
+    pop(asmjit::x86::r14);
+    pop(asmjit::x86::r13);
+    pop(asmjit::x86::r12);
+    pop(asmjit::x86::rsi);
+    pop(asmjit::x86::rdi);
+    pop(asmjit::x86::rbp);
+    pop(asmjit::x86::rbx);
+}
+
 #endif
