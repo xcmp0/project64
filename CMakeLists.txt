@@ -17,3 +17,6 @@ include(ThirdParty)
 include(Common)
 include(Project64-rsp-core)
 include(Project64-core)
+
+enable_testing()
+include(Project64-test)
