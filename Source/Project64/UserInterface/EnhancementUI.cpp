@@ -375,7 +375,7 @@ void CEnhancementUI::AddCodeLayers(LPARAM Enhancement, const std::wstring & Name
         g_Notify->BreakPoint(__FILE__, __LINE__);
     }
     wcscpy(Text, Name.c_str());
-    if (wcschr(Text, L'\\') > 0)
+    if (wcschr(Text, L'\\') != nullptr)
     {
         *wcschr(Text, L'\\') = 0;
     }

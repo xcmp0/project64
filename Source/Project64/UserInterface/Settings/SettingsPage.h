@@ -19,7 +19,15 @@ template <class T>
 class CSettingsPageImpl :
     public CDialogImpl<T>
 {
+public:
+    // Names from the dependent base (only MSVC finds them unqualified)
+    using CDialogImpl<T>::m_hWnd;
+    using CDialogImpl<T>::GetParent;
+    using CDialogImpl<T>::SetWindowPos;
+
 protected:
+    using CDialogImpl<T>::m_thunk;
+
     typedef std::map<SettingID, CModifiedEditBox *> TextBoxList;
     typedef std::map<SettingID, CModifiedButton *> ButtonList;
     typedef std::map<SettingID, CModifiedComboBox *> ComboBoxList;

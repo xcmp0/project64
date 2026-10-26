@@ -26,7 +26,7 @@ public:
         {
             DeleteObject(m_BoldFont);
         }
-        for (TParamList::iterator iter = m_ParamList.begin(); iter != m_ParamList.end(); iter++)
+        for (typename TParamList::iterator iter = m_ParamList.begin(); iter != m_ParamList.end(); iter++)
         {
             TParam * Item = (TParam *)*iter;
             if (Item)

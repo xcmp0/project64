@@ -5,6 +5,10 @@ template <class T>
 class CDebugDialog :
     public CDialogImpl<T>
 {
+public:
+    // A name from the dependent base (only MSVC finds it unqualified)
+    using CDialogImpl<T>::m_hWnd;
+
 protected:
     CDebuggerUI * m_Debugger;
     HANDLE m_CreatedEvent;

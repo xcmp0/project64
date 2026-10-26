@@ -428,7 +428,7 @@ void CCheatList::AddCodeLayers(LPARAM Enhancement, const std::wstring & Name, HT
         g_Notify->BreakPoint(__FILE__, __LINE__);
     }
     wcscpy(Text, Name.c_str());
-    if (wcschr(Text, L'\\') > 0)
+    if (wcschr(Text, L'\\') != nullptr)
     {
         *wcschr(Text, L'\\') = 0;
     }
@@ -936,7 +936,7 @@ LRESULT CEnhancementCodeEx::OnInitDialog(UINT /*uMsg*/, WPARAM /*wParam*/, LPARA
 
     GetDlgItem(IDC_CHEAT_NAME).SetWindowText(stdstr(m_Enhancement->GetName()).ToUTF16().c_str());
 
-    CListBox CheatList = GetDlgItem(IDC_CHEAT_LIST);
+    CListBox CheatList(GetDlgItem(IDC_CHEAT_LIST));
     CEnhancement::CodeOptions Options = m_Enhancement->GetOptions();
     bool OptionSelected = m_Enhancement->OptionSelected();
     uint16_t SelectedOption = m_Enhancement->SelectedOption();
@@ -964,7 +964,7 @@ LRESULT CEnhancementCodeEx::OnListDblClick(WORD /*wNotifyCode*/, WORD /*wID*/, H
 
 LRESULT CEnhancementCodeEx::OnOkCmd(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL & /*bHandled*/)
 {
-    CListBox CheatList = GetDlgItem(IDC_CHEAT_LIST);
+    CListBox CheatList(GetDlgItem(IDC_CHEAT_LIST));
     int index = CheatList.GetCurSel();
     if (index < 0)
     {

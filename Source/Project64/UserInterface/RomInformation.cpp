@@ -3,6 +3,9 @@
 #include "RomInformation.h"
 #include <Project64-core/N64System/N64Disk.h>
 
+// Declared as a friend of RomInformation; a friend declaration alone is not visible here
+DWORD CALLBACK RomInfoProc(HWND, DWORD, WPARAM, LPARAM);
+
 RomInformation::RomInformation(const char * RomFile) :
     m_DeleteRomInfo(true),
     m_DeleteDiskInfo(true),

@@ -15,6 +15,12 @@ void EnterLogOptions(HWND hwndOwner);
 
 LRESULT CALLBACK MainGui_Proc(HWND WndHandle, DWORD uMsg, DWORD wParam, DWORD lParam);
 
+// Declared as friends of CMainGui; a friend declaration alone is not visible here
+void RomBowserEnabledChanged(CMainGui * Gui);
+void RomBowserColoumnsChanged(CMainGui * Gui);
+void RomBrowserListChanged(CMainGui * Gui);
+void DiscordRPCChanged(CMainGui * Gui);
+
 CMainGui::CMainGui(bool bMainWindow, const char * WindowTitle) :
     CRomBrowser(m_hMainWindow, m_hStatusWnd),
     m_ThreadId(GetCurrentThreadId()),

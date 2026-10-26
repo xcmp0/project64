@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-#include "Debugger.h"
+#include "debugger.h"
 #include "Project64\UserInterface\DiscordRPC.h"
 #include "ScriptAPI/ScriptAPI.h"
 #include "ScriptInstance.h"
@@ -213,8 +213,8 @@ void CScriptSystem::UpdateCpuCbListInfo(volatile JSCpuCbListInfo & info, JSAppCa
             // combine adjacent/overlapping ranges
             if ((callback.m_Params.addrStart >= info.rangeCache[i].addrStart && callback.m_Params.addrStart <= info.rangeCache[i].addrEnd + 1) || (callback.m_Params.addrEnd >= info.rangeCache[i].addrStart - 1 && callback.m_Params.addrEnd <= info.rangeCache[i].addrEnd))
             {
-                info.rangeCache[i].addrStart = min(info.rangeCache[i].addrStart, callback.m_Params.addrStart);
-                info.rangeCache[i].addrEnd = max(info.rangeCache[i].addrEnd, callback.m_Params.addrEnd);
+                info.rangeCache[i].addrStart = (std::min)((uint32_t)info.rangeCache[i].addrStart, (uint32_t)callback.m_Params.addrStart);
+                info.rangeCache[i].addrEnd = (std::max)((uint32_t)info.rangeCache[i].addrEnd, (uint32_t)callback.m_Params.addrEnd);
                 break;
             }
         }

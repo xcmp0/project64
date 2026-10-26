@@ -31,6 +31,7 @@ void CJSServerWorker::Init(const char * address, unsigned short port)
 void CJSServerWorker::WorkerProc()
 {
     int rc;
+    ULONG nonBlock = 1;
 
     union
     {
@@ -67,7 +68,6 @@ void CJSServerWorker::WorkerProc()
         goto stop_cleanup;
     }
 
-    ULONG nonBlock = 1;
     rc = ioctlsocket(m_ServerSocket, FIONBIO, &nonBlock);
     if (rc == SOCKET_ERROR)
     {

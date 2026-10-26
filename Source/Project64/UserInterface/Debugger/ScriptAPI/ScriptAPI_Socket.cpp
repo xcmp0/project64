@@ -263,7 +263,8 @@ CJSSocketWorker * GetThisSocket(duk_context * ctx)
     if (socketWorker == nullptr)
     {
         duk_push_error_object(ctx, DUK_ERR_ERROR, "internal socket object is null");
-        return duk_throw(ctx);
+        duk_throw(ctx);
+        return nullptr;
     }
 
     return socketWorker;
