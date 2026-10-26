@@ -12,6 +12,7 @@
 #include <Common/DynamicLibrary.h>
 #include <Common/StdString.h>
 #include <Common/SyncEvent.h>
+#include <Common/Thread.h>
 #include <Common/path.h>
 #include <Project64-core/AppInit.h>
 #include <Project64-core/Debugger.h>
@@ -21,6 +22,10 @@
 #include <Project64-core/Plugins/Plugin.h>
 #include <Project64-core/Settings.h>
 #include <png/png.h>
+
+#if defined(__x86_64__) && defined(__GLIBC__)
+#include <malloc.h>
+#endif
 
 #include <atomic>
 #include <chrono>
@@ -55,6 +60,7 @@ const char Usage[] =
     "  --dump-at <n,...>    frames to write\n"
     "  --dump-every <k>     write every k-th frame\n"
     "  --timeout <s>        stop after s seconds of wall time (default: none)\n"
+    "  --keep-going         run on after the core reports an error (default: stop)\n"
     "  --basedir <dir>      settings and data directory (default: the program's)\n"
     "  --verbose            print the core's messages\n"
     "exit code: 0 done, 1 an error was reported, 2 bad arguments or ROM,\n"
@@ -74,12 +80,27 @@ struct Options
     uint32_t Seed = 0;
     uint32_t Timeout = 0;
     bool Verbose = false;
+    bool KeepGoing = false;
 };
 
 Options g_Options;
 std::atomic<uint32_t> g_Frame(0);
 std::atomic<bool> g_Error(false);
 SyncEvent g_Done;
+uint32_t g_MainThread = 0;
+
+// An error from the emulation: the first one ends the run unless asked
+// otherwise, so its traces (such as the sync CPU's log) stay as they were
+void ErrorReported(void)
+{
+    g_Error = true;
+    if (!g_Options.KeepGoing && g_BaseSystem != nullptr && CThread::GetCurrentThreadId() != g_MainThread &&
+        g_Settings->LoadBool(GameRunning_CPU_Running))
+    {
+        g_BaseSystem->CloseCpu();
+        g_Done.Trigger();
+    }
+}
 uint32_t g_WavSetting = 0;
 
 typedef void(CALL * ReadScreenFunc)(void ** Dest, long * Width, long * Height);
@@ -95,7 +116,7 @@ public:
     void DisplayError(const char * Message) const override
     {
         fprintf(stderr, "error: %s\n", Message);
-        g_Error = true;
+        ErrorReported();
     }
     void DisplayError(LanguageStringID StringID) const override
     {
@@ -104,7 +125,7 @@ public:
     void FatalError(const char * Message) const override
     {
         fprintf(stderr, "fatal: %s\n", Message);
-        g_Error = true;
+        ErrorReported();
     }
     void FatalError(LanguageStringID StringID) const override
     {
@@ -143,7 +164,7 @@ public:
     void BreakPoint(const char * FileName, int32_t LineNumber) override
     {
         fprintf(stderr, "error: core breakpoint at %s:%d\n", FileName, LineNumber);
-        g_Error = true;
+        ErrorReported();
     }
     void AppInitDone(void) override
     {
@@ -244,6 +265,11 @@ bool ParseOptions(int argc, char ** argv)
         if (Option == "--verbose")
         {
             g_Options.Verbose = true;
+            continue;
+        }
+        if (Option == "--keep-going")
+        {
+            g_Options.KeepGoing = true;
             continue;
         }
         if (Option.compare(0, 2, "--") != 0)
@@ -593,11 +619,19 @@ int Run(void)
 
 int main(int argc, char ** argv)
 {
+#if defined(__x86_64__) && defined(__GLIBC__)
+    // The x64 recompiler reaches the emulator's objects with 32-bit
+    // displacements: one heap, in the brk area just above the program, which
+    // is linked at a low address (no PIE)
+    mallopt(M_MMAP_THRESHOLD, 32 * 1024 * 1024);
+    mallopt(M_ARENA_MAX, 1);
+#endif
     if (!ParseOptions(argc, argv))
     {
         fputs(Usage, stderr);
         return Exit_Usage;
     }
+    g_MainThread = CThread::GetCurrentThreadId();
     std::string BaseDir = g_Options.BaseDir.empty() ? std::string((const char *)CPath(CPath::MODULE_DIRECTORY)) : FullPath(g_Options.BaseDir);
     if (BaseDir.empty() || BaseDir.back() != '/')
     {

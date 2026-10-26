@@ -53,7 +53,16 @@ void * AllocateAddressSpace(size_t size, void * base_address)
 #ifdef _WIN32
     return VirtualAlloc(base_address, size, MEM_RESERVE | MEM_TOP_DOWN, PAGE_NOACCESS);
 #else
-    void * ptr = mmap((void *)0, size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    int flags = MAP_PRIVATE | MAP_ANON;
+#if defined(__x86_64__) && defined(MAP_32BIT)
+    // The x64 recompiler reaches RDRAM and its own code with 32-bit
+    // displacements (on Windows, the reserves lie next to each other)
+    if (base_address == nullptr)
+    {
+        flags |= MAP_32BIT;
+    }
+#endif
+    void * ptr = mmap(base_address, size, PROT_NONE, flags, -1, 0);
     if (ptr == MAP_FAILED)
     {
         return nullptr;
