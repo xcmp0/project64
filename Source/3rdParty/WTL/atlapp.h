@@ -31,7 +31,7 @@
 	#error WTL doesn't support _ATL_NO_WIN_SUPPORT
 #endif
 
-#if (_MSC_VER < 1400)
+#if defined(_MSC_VER) && (_MSC_VER < 1400)
 	#error WTL10 requires C++ compiler version 14 (Visual C++ 2005) or higher
 #endif
 
