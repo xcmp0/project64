@@ -200,7 +200,10 @@ function(pj64_target target project_dir)
     target_include_directories(${target} PRIVATE "${PJ64_SRC}/${project_dir}")
     target_include_directories(${target} PUBLIC ${PJ64_INCLUDE_DIRS})
     target_compile_options(${target} PRIVATE
-        "SHELL:-include \"${PJ64_ROOT}/cmake/include/Pj64Compat.h\"")
+        "SHELL:-include \"${PJ64_ROOT}/cmake/include/Pj64Compat.h\""
+        # What MSVC only warns about: register, narrowing in braces and case labels
+        $<$<COMPILE_LANG_AND_ID:CXX,Clang>:-Wno-register -Wno-c++11-narrowing>
+        $<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wno-register -Wno-narrowing>)
 endfunction()
 
 # pj64_rc(<out-var> <rc file>)
@@ -246,23 +249,61 @@ function(pj64_rc out rc)
     endwhile()
     set(copy "${PJ64_GEN}/rc/${rc_name}")
     file(WRITE "${copy}" "${text}")
-    set_property(SOURCE "${copy}" APPEND PROPERTY INCLUDE_DIRECTORIES "${rc_dir}")
+    # Its directory, and the same place in the generated tree for relative
+    # includes of generated headers (../Project64-core/Version.h)
+    file(RELATIVE_PATH rc_rel "${PJ64_SRC}" "${rc_dir}")
+    file(MAKE_DIRECTORY "${PJ64_GEN}/Source/${rc_rel}")
+    set_property(SOURCE "${copy}" APPEND PROPERTY INCLUDE_DIRECTORIES "${rc_dir}" "${PJ64_GEN}/Source/${rc_rel}")
     set(${out} "${copy}" PARENT_SCOPE)
+endfunction()
+
+# pj64_wtl(<target>)
+#
+# A target that uses WTL: WTL 10 on ReactOS's ATL (Source/3rdParty/ReactOS-ATL)
+# with the additions WTL needs (Source/3rdParty/atlcompat). Needs Clang: WTL
+# leans on MSVC's template parsing. No ActiveX hosting; Windows Vista APIs.
+function(pj64_wtl target)
+    target_include_directories(${target} BEFORE PRIVATE
+        "${PJ64_SRC}/3rdParty/atlcompat" "${PJ64_SRC}/3rdParty/ReactOS-ATL")
+    target_compile_definitions(${target} PRIVATE _ATL_NO_HOSTING _WIN32_WINNT=0x0600 WINVER=0x0600)
+    target_compile_options(${target} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fdelayed-template-parsing -fms-extensions>)
+endfunction()
+
+# pj64_plugin(<target> <output name> <plugin directory>)
+#
+# A plugin library, written to <build>/Plugin/<plugin directory>/<output name>.
+function(pj64_plugin target output_name plugin_dir)
+    set_target_properties(${target} PROPERTIES
+        PREFIX ""
+        OUTPUT_NAME "${output_name}"
+        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/Plugin/${plugin_dir}"
+        LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/Plugin/${plugin_dir}")
 endfunction()
 
 # pj64_vcxproj_sources(<out-var> <vcxproj> [EXCLUDE <path>...])
 #
 # Reads the <ClCompile Include="..."> items of an upstream project file and
-# returns them as absolute paths. EXCLUDE takes paths as written in the
-# project file (either slash, any case). The project files were written for a
-# case-blind file system: an item not found as written is matched case-blind
-# against the files on disk and returned with the on-disk spelling.
+# returns them as absolute paths, without those it excludes from every build.
+# EXCLUDE takes paths as written in the project file (either slash, any case).
+# The project files were written for a case-blind file system: an item not
+# found as written is matched case-blind against the files on disk and
+# returned with the on-disk spelling.
 function(pj64_vcxproj_sources out vcxproj)
     cmake_parse_arguments(ARG "" "" "EXCLUDE" ${ARGN})
     get_filename_component(dir "${vcxproj}" DIRECTORY)
 
     set(excluded "")
     foreach(item IN LISTS ARG_EXCLUDE)
+        string(REPLACE "\\" "/" item "${item}")
+        string(TOLOWER "${item}" item)
+        list(APPEND excluded "${item}")
+    endforeach()
+
+    # Items with an unconditional <ExcludedFromBuild>true</ExcludedFromBuild> are skipped
+    file(READ "${vcxproj}" project)
+    string(REGEX MATCHALL "<ClCompile Include=\"[^\"]+\">[^<]*<ExcludedFromBuild>true</ExcludedFromBuild>" skipped "${project}")
+    foreach(item IN LISTS skipped)
+        string(REGEX REPLACE "<ClCompile Include=\"([^\"]+)\".*" "\\1" item "${item}")
         string(REPLACE "\\" "/" item "${item}")
         string(TOLOWER "${item}" item)
         list(APPEND excluded "${item}")
