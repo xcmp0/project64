@@ -50,3 +50,26 @@ if(WIN32)
     add_library(pj64_7zip STATIC ${7zip_sources})
     target_include_directories(pj64_7zip PUBLIC "${PJ64_3RDPARTY}/7zip")
 endif()
+
+# libpng 1.4 (screenshots, texture dumps)
+pj64_vcxproj_sources(png_sources "${PJ64_3RDPARTY}/png/png.vcxproj")
+add_library(pj64_png STATIC ${png_sources})
+target_include_directories(pj64_png PUBLIC "${PJ64_3RDPARTY}/png" "${PJ64_3RDPARTY}")
+target_link_libraries(pj64_png PUBLIC pj64_zlib)
+
+if(WIN32)
+    # Duktape (the debugger's scripts) and Discord rich presence: Windows UI only
+    pj64_vcxproj_sources(duktape_sources "${PJ64_3RDPARTY}/duktape/duktape.vcxproj")
+    add_library(pj64_duktape STATIC ${duktape_sources})
+    target_include_directories(pj64_duktape PUBLIC "${PJ64_3RDPARTY}/duktape")
+
+    pj64_vcxproj_sources(discord_sources "${PJ64_3RDPARTY}/discord-rpc/discord-rpc.vcxproj")
+    add_library(pj64_discord STATIC ${discord_sources})
+    target_include_directories(pj64_discord
+        PRIVATE "${PJ64_3RDPARTY}/discord-rpc" ${PJ64_INCLUDE_DIRS}
+        PUBLIC "${PJ64_3RDPARTY}/discord-rpc/include")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        # Its rapidjson has template members that only MSVC-style parsing skips
+        target_compile_options(pj64_discord PRIVATE -fdelayed-template-parsing)
+    endif()
+endif()

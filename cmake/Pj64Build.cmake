@@ -32,25 +32,36 @@ add_compile_definitions($<$<CONFIG:Debug>:_DEBUG> $<$<CONFIG:Debug>:DEBUG>)
 if(WIN32)
     add_compile_definitions(WIN32 _WIN32 _WINDOWS WIN32_LEAN_AND_MEAN UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS)
 endif()
+if(MINGW)
+    # One file per program and plugin: no MinGW runtime DLLs beside them
+    add_link_options(-static)
+endif()
 
-# pj64_backslash_includes(<dir>)
+# pj64_scan_sources(<out-var>)
 #
-# The sources mix #include <a/b.h> and #include <a\b.h>. Windows accepts both;
-# elsewhere a backslash is part of the file name. For every backslash include
-# found under Source, this writes a file of exactly that name into <dir>
-# (a\b.h) that includes the real header by its full path, so the real file
-# keeps its own directory for its "relative" includes.
-function(pj64_backslash_includes dir)
+# The Project64 sources (Source/*, without 3rdParty and GLideN64).
+function(pj64_scan_sources out)
     file(GLOB projects LIST_DIRECTORIES true "${PJ64_SRC}/*")
     list(FILTER projects EXCLUDE REGEX "/Source/(3rdParty|GLideN64)$")
     set(sources "")
     foreach(project IN LISTS projects)
         if(IS_DIRECTORY "${project}")
             file(GLOB_RECURSE found LIST_DIRECTORIES false
-                "${project}/*.h" "${project}/*.hpp" "${project}/*.c" "${project}/*.cpp")
+                "${project}/*.h" "${project}/*.hpp" "${project}/*.c" "${project}/*.cpp" "${project}/*.rc")
             list(APPEND sources ${found})
         endif()
     endforeach()
+    set(${out} "${sources}" PARENT_SCOPE)
+endfunction()
+
+# pj64_backslash_includes(<dir> <sources>)
+#
+# The sources mix #include <a/b.h> and #include <a\b.h>. Windows accepts both;
+# elsewhere a backslash is part of the file name. For every backslash include
+# found under Source, this writes a file of exactly that name into <dir>
+# (a\b.h) that includes the real header by its full path, so the real file
+# keeps its own directory for its "relative" includes.
+function(pj64_backslash_includes dir sources)
     set(names "")
     foreach(source IN LISTS sources)
         file(STRINGS "${source}" lines REGEX "^[ \t]*#[ \t]*include[ \t]*<[^>]*\\\\[^>]*>")
@@ -73,13 +84,107 @@ function(pj64_backslash_includes dir)
     endforeach()
 endfunction()
 
+# pj64_find_nocase(<out-var> <root> <relative path>)
+#
+# The file under <root> whose path matches <relative path> ignoring case, or "".
+function(pj64_find_nocase out root path)
+    set(${out} "" PARENT_SCOPE)
+    string(REPLACE "/" ";" parts "${path}")
+    set(current "${root}")
+    foreach(part IN LISTS parts)
+        if(NOT IS_DIRECTORY "${current}")
+            return()
+        endif()
+        file(GLOB entries LIST_DIRECTORIES true RELATIVE "${current}" "${current}/*")
+        string(TOLOWER "${part}" part_lower)
+        set(match "")
+        foreach(entry IN LISTS entries)
+            string(TOLOWER "${entry}" entry_lower)
+            if(entry_lower STREQUAL part_lower)
+                set(match "${entry}")
+                break()
+            endif()
+        endforeach()
+        if(match STREQUAL "")
+            return()
+        endif()
+        set(current "${current}/${match}")
+    endforeach()
+    if(NOT IS_DIRECTORY "${current}")
+        set(${out} "${current}" PARENT_SCOPE)
+    endif()
+endfunction()
+
+# pj64_case_includes(<dir> <sources>)
+#
+# Windows file names ignore case, and the sources rely on it (<Windows.h>,
+# <wtl/atlapp.h>, "WinResrc.h"). Cross-compiling on a host that does not, this
+# writes a file of the spelling used into <dir> for every include that only
+# matches ignoring case, including the real file by its full path. A "quoted"
+# include is matched against the system headers only, as a project file of
+# that name may exist in more than one directory.
+function(pj64_case_includes dir sources)
+    set(project_roots "${PJ64_SRC}" "${PJ64_SRC}/3rdParty" "${PJ64_SRC}/3rdParty/asmjit/src")
+    set(system_roots ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+    set(angle "")
+    set(quoted "")
+    foreach(source IN LISTS sources)
+        get_filename_component(source_dir "${source}" DIRECTORY)
+        file(STRINGS "${source}" lines REGEX "^[ \t]*#[ \t]*include[ \t]*[<\"][^>\"\\\\]+[>\"]")
+        foreach(line IN LISTS lines)
+            string(REGEX REPLACE "^[ \t]*#[ \t]*include[ \t]*([<\"])([^>\"]+)[>\"].*" "\\1" kind "${line}")
+            string(REGEX REPLACE "^[ \t]*#[ \t]*include[ \t]*[<\"]([^>\"]+)[>\"].*" "\\1" name "${line}")
+            if(kind STREQUAL "<")
+                list(APPEND angle "${name}")
+            elseif(NOT EXISTS "${source_dir}/${name}")
+                list(APPEND quoted "${name}")
+            endif()
+        endforeach()
+    endforeach()
+    list(REMOVE_DUPLICATES angle)
+    list(REMOVE_DUPLICATES quoted)
+
+    file(REMOVE_RECURSE "${dir}")
+    foreach(kind angle quoted)
+        if(kind STREQUAL "angle")
+            set(search ${project_roots} ${system_roots})
+        else()
+            set(search ${system_roots})
+        endif()
+        foreach(name IN LISTS ${kind})
+            set(found FALSE)
+            foreach(root IN LISTS project_roots system_roots)
+                if(EXISTS "${root}/${name}")
+                    set(found TRUE)
+                    break()
+                endif()
+            endforeach()
+            if(found)
+                continue()
+            endif()
+            foreach(root IN LISTS search)
+                pj64_find_nocase(real "${root}" "${name}")
+                if(NOT real STREQUAL "")
+                    file(WRITE "${dir}/${name}" "#include \"${real}\"\n")
+                    break()
+                endif()
+            endforeach()
+        endforeach()
+    endforeach()
+endfunction()
+
 # Include roots shared by every Project64 target (PropertySheets/Platform.props).
 # Generated headers come first, so a Version.h left in Source by an MSVC build
 # does not shadow the one generated here.
 set(PJ64_INCLUDE_DIRS "${PJ64_GEN}/Source" "${PJ64_SRC}" "${PJ64_SRC}/3rdParty")
 if(NOT CMAKE_HOST_WIN32)
-    pj64_backslash_includes("${PJ64_GEN}/backslash")
+    pj64_scan_sources(pj64_sources)
+    pj64_backslash_includes("${PJ64_GEN}/backslash" "${pj64_sources}")
     list(APPEND PJ64_INCLUDE_DIRS "${PJ64_GEN}/backslash")
+    if(WIN32)
+        pj64_case_includes("${PJ64_GEN}/case" "${pj64_sources}")
+        list(APPEND PJ64_INCLUDE_DIRS "${PJ64_GEN}/case")
+    endif()
 endif()
 if(NOT WIN32)
     # Stand-ins for MSVC-only headers (cmake/include/msvc).
@@ -96,6 +201,53 @@ function(pj64_target target project_dir)
     target_include_directories(${target} PUBLIC ${PJ64_INCLUDE_DIRS})
     target_compile_options(${target} PRIVATE
         "SHELL:-include \"${PJ64_ROOT}/cmake/include/Pj64Compat.h\"")
+endfunction()
+
+# pj64_rc(<out-var> <rc file>)
+#
+# Resource scripts name their icons, bitmaps and cursors Windows-style
+# ("Icons\\PJ64.ICO"). Cross-compiling on a host that is not Windows, this
+# writes a copy of the script with those names replaced by the matching files
+# (case-blind) and returns it; otherwise it returns the script itself. The
+# script's own directory must be on its include path for its #includes. The copy
+# also leaves out what windres does not read.
+function(pj64_rc out rc)
+    if(CMAKE_HOST_WIN32)
+        set(${out} "${rc}" PARENT_SCOPE)
+        return()
+    endif()
+    get_filename_component(rc_dir "${rc}" DIRECTORY)
+    get_filename_component(rc_name "${rc}" NAME)
+    file(READ "${rc}" text)
+    string(REGEX MATCHALL "[ \t](ICON|BITMAP|CURSOR|PNG|RCDATA|HTML)[ \t]+(DISCARDABLE[ \t]+)?\"[^\"\n]+\"" refs "${text}")
+    foreach(ref IN LISTS refs)
+        string(REGEX REPLACE ".*\"([^\"]+)\"$" "\\1" name "${ref}")
+        string(REPLACE "\\\\" "/" path "${name}")
+        string(REPLACE "\\" "/" path "${path}")
+        pj64_find_nocase(real "${rc_dir}" "${path}")
+        if(NOT real STREQUAL "")
+            string(REPLACE "\"${name}\"" "\"${real}\"" text "${text}")
+        endif()
+    endforeach()
+    # DLGINIT blocks (combo box items for MFC and ActiveX hosts) are MSVC-only;
+    # WTL dialogs never read them
+    string(FIND "${text}" "DLGINIT" pos)
+    while(pos GREATER -1)
+        string(SUBSTRING "${text}" 0 ${pos} head)
+        string(FIND "${head}" "\n" line_start REVERSE)
+        math(EXPR line_start "${line_start} + 1")
+        string(SUBSTRING "${text}" ${pos} -1 tail)
+        string(FIND "${tail}" "\nEND" end)
+        math(EXPR end "${pos} + ${end} + 4")
+        string(SUBSTRING "${text}" 0 ${line_start} before)
+        string(SUBSTRING "${text}" ${end} -1 after)
+        set(text "${before}${after}")
+        string(FIND "${text}" "DLGINIT" pos)
+    endwhile()
+    set(copy "${PJ64_GEN}/rc/${rc_name}")
+    file(WRITE "${copy}" "${text}")
+    set_property(SOURCE "${copy}" APPEND PROPERTY INCLUDE_DIRECTORIES "${rc_dir}")
+    set(${out} "${copy}" PARENT_SCOPE)
 endfunction()
 
 # pj64_vcxproj_sources(<out-var> <vcxproj> [EXCLUDE <path>...])
