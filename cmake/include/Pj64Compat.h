@@ -53,3 +53,8 @@ static inline void _aligned_free(void * ptr)
 #ifndef _Printf_format_string_
 #define _Printf_format_string_
 #endif
+
+/* MSVC keyword */
+#if !defined(_MSC_VER) && !defined(__interface)
+#define __interface struct
+#endif

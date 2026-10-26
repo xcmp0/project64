@@ -44,7 +44,7 @@ void * DynamicLibraryGetProc(DynLibHandle Lib, const char * ProcedureName)
     }
 
 #ifdef _WIN32
-    return GetProcAddress((HMODULE)Lib, ProcedureName);
+    return (void *)GetProcAddress((HMODULE)Lib, ProcedureName);
 #else
     return dlsym(Lib, ProcedureName);
 #endif
