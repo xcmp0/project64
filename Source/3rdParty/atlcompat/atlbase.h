@@ -1,11 +1,12 @@
 /*
  * atlbase.h for GCC and Clang: ReactOS's ATL (Source/3rdParty/ReactOS-ATL)
- * plus the parts of Microsoft's ATL 8 that WTL 10 and Project64 use.
- * This directory comes before ReactOS-ATL in the include path.
+ * plus the parts of Microsoft's ATL 8 that WTL 10, Project64 and GLideN64's
+ * WTL 8.1 use. This directory comes before ReactOS-ATL in the include path.
  */
 #pragma once
 
 #include_next <atlbase.h>
+#include <atlconv.h>
 #include <atlsimpcoll.h>
 #include <shlwapi.h>
 #include <string.h>
@@ -30,6 +31,27 @@
 
 #ifndef ATLASSUME
 #define ATLASSUME(expr) ATLASSERT(expr)
+#endif
+
+#ifndef ATLENSURE_THROW
+#define ATLENSURE_THROW(expr, hr) \
+    do                            \
+    {                             \
+        int ok = !!(expr);        \
+        ATLASSUME(ok);            \
+        if (!ok)                  \
+            AtlThrow(hr);         \
+    } while (0)
+#endif
+#ifndef ATLENSURE
+#define ATLENSURE(expr) ATLENSURE_THROW(expr, E_FAIL)
+#endif
+
+#ifndef ATLAPI
+#define ATLAPI __declspec(nothrow) HRESULT __stdcall
+#endif
+#ifndef ATLAPI_
+#define ATLAPI_(x) __declspec(nothrow) x __stdcall
 #endif
 
 #ifndef DECLARE_TRACE_CATEGORY
@@ -194,6 +216,12 @@ private:
     T * m_p;
     BYTE m_abFixedBuffer[t_nFixedBytes];
 };
+
+/* A string resource of the module's resource instance */
+inline int AtlLoadString(UINT nID, LPTSTR lpBuffer, int nBufferMax)
+{
+    return ::LoadString(_AtlBaseModule.GetResourceInstance(), nID, lpBuffer, nBufferMax);
+}
 
 /* Version of the common controls in use (5 or 6) */
 inline HRESULT AtlGetCommCtrlVersion(LPDWORD pdwMajor, LPDWORD pdwMinor)

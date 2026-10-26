@@ -1,6 +1,7 @@
 /*
  * atlwin.h for GCC and Clang: ReactOS's windowing classes plus the message
- * map macros and helpers of Microsoft's ATL 8 that WTL 10 and Project64 use.
+ * map macros and helpers of Microsoft's ATL 8 that WTL 10, Project64 and
+ * GLideN64's WTL 8.1 use.
  */
 #pragma once
 
@@ -237,5 +238,89 @@ public:                                                                         
         lResult = ATL::AtlForwardNotifications(hWnd, uMsg, wParam, lParam, bHandled);       \
         if (bHandled)                                                                       \
             return TRUE;                                                                    \
+    }
+#endif
+
+/* Handlers of the messages that REFLECT_NOTIFICATIONS sends back to the control */
+#ifndef REFLECTED_COMMAND_HANDLER
+#define REFLECTED_COMMAND_HANDLER(id, code, func)                                     \
+    if (uMsg == OCM_COMMAND && (id) == LOWORD(wParam) && (code) == HIWORD(wParam))     \
+    {                                                                                  \
+        bHandled = TRUE;                                                               \
+        lResult = func(HIWORD(wParam), LOWORD(wParam), (HWND)lParam, bHandled);        \
+        if (bHandled)                                                                  \
+            return TRUE;                                                               \
+    }
+#define REFLECTED_COMMAND_ID_HANDLER(id, func)                                         \
+    if (uMsg == OCM_COMMAND && (id) == LOWORD(wParam))                                 \
+    {                                                                                  \
+        bHandled = TRUE;                                                               \
+        lResult = func(HIWORD(wParam), LOWORD(wParam), (HWND)lParam, bHandled);        \
+        if (bHandled)                                                                  \
+            return TRUE;                                                               \
+    }
+#define REFLECTED_COMMAND_CODE_HANDLER(code, func)                                     \
+    if (uMsg == OCM_COMMAND && (code) == HIWORD(wParam))                               \
+    {                                                                                  \
+        bHandled = TRUE;                                                               \
+        lResult = func(HIWORD(wParam), LOWORD(wParam), (HWND)lParam, bHandled);        \
+        if (bHandled)                                                                  \
+            return TRUE;                                                               \
+    }
+#define REFLECTED_COMMAND_RANGE_HANDLER(idFirst, idLast, func)                                    \
+    if (uMsg == OCM_COMMAND && LOWORD(wParam) >= (idFirst) && LOWORD(wParam) <= (idLast))         \
+    {                                                                                             \
+        bHandled = TRUE;                                                                          \
+        lResult = func(HIWORD(wParam), LOWORD(wParam), (HWND)lParam, bHandled);                   \
+        if (bHandled)                                                                             \
+            return TRUE;                                                                          \
+    }
+#define REFLECTED_COMMAND_RANGE_CODE_HANDLER(idFirst, idLast, code, func)                                                      \
+    if (uMsg == OCM_COMMAND && (code) == HIWORD(wParam) && LOWORD(wParam) >= (idFirst) && LOWORD(wParam) <= (idLast))          \
+    {                                                                                                                          \
+        bHandled = TRUE;                                                                                                       \
+        lResult = func(HIWORD(wParam), LOWORD(wParam), (HWND)lParam, bHandled);                                                \
+        if (bHandled)                                                                                                          \
+            return TRUE;                                                                                                       \
+    }
+#define REFLECTED_NOTIFY_HANDLER(id, cd, func)                                                        \
+    if (uMsg == OCM_NOTIFY && (id) == ((LPNMHDR)lParam)->idFrom && (cd) == ((LPNMHDR)lParam)->code)    \
+    {                                                                                                 \
+        bHandled = TRUE;                                                                              \
+        lResult = func((int)wParam, (LPNMHDR)lParam, bHandled);                                       \
+        if (bHandled)                                                                                 \
+            return TRUE;                                                                              \
+    }
+#define REFLECTED_NOTIFY_ID_HANDLER(id, func)                             \
+    if (uMsg == OCM_NOTIFY && (id) == ((LPNMHDR)lParam)->idFrom)          \
+    {                                                                     \
+        bHandled = TRUE;                                                  \
+        lResult = func((int)wParam, (LPNMHDR)lParam, bHandled);           \
+        if (bHandled)                                                     \
+            return TRUE;                                                  \
+    }
+#define REFLECTED_NOTIFY_CODE_HANDLER(cd, func)                           \
+    if (uMsg == OCM_NOTIFY && (cd) == ((LPNMHDR)lParam)->code)            \
+    {                                                                     \
+        bHandled = TRUE;                                                  \
+        lResult = func((int)wParam, (LPNMHDR)lParam, bHandled);           \
+        if (bHandled)                                                     \
+            return TRUE;                                                  \
+    }
+#define REFLECTED_NOTIFY_RANGE_HANDLER(idFirst, idLast, func)                                                 \
+    if (uMsg == OCM_NOTIFY && ((LPNMHDR)lParam)->idFrom >= (idFirst) && ((LPNMHDR)lParam)->idFrom <= (idLast)) \
+    {                                                                                                         \
+        bHandled = TRUE;                                                                                      \
+        lResult = func((int)wParam, (LPNMHDR)lParam, bHandled);                                               \
+        if (bHandled)                                                                                         \
+            return TRUE;                                                                                      \
+    }
+#define REFLECTED_NOTIFY_RANGE_CODE_HANDLER(idFirst, idLast, cd, func)                                                                              \
+    if (uMsg == OCM_NOTIFY && (cd) == ((LPNMHDR)lParam)->code && ((LPNMHDR)lParam)->idFrom >= (idFirst) && ((LPNMHDR)lParam)->idFrom <= (idLast)) \
+    {                                                                                                                                               \
+        bHandled = TRUE;                                                                                                                            \
+        lResult = func((int)wParam, (LPNMHDR)lParam, bHandled);                                                                                     \
+        if (bHandled)                                                                                                                               \
+            return TRUE;                                                                                                                            \
     }
 #endif
