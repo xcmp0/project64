@@ -4,6 +4,21 @@ set(PJ64_ROOT "${PROJECT_SOURCE_DIR}")
 set(PJ64_SRC "${PJ64_ROOT}/Source")
 set(PJ64_GEN "${PROJECT_BINARY_DIR}/gen")
 
+# MSYS2's and Cygwin's own compilers (/usr/bin/gcc, /usr/bin/clang) build for
+# their POSIX layer, not for Windows. (CMake's MSYS variable only means the
+# "MSYS Makefiles" generator, which suits MinGW compilers.)
+foreach(pj64_lang C CXX)
+    execute_process(COMMAND "${CMAKE_${pj64_lang}_COMPILER}" -dumpmachine
+        OUTPUT_VARIABLE pj64_machine OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(pj64_machine MATCHES "msys|cygwin" OR CMAKE_${pj64_lang}_PLATFORM_ID MATCHES "^(MSYS|Cygwin)$"
+            OR CYGWIN OR CMAKE_SYSTEM_NAME MATCHES "^(MSYS|CYGWIN)$")
+        message(FATAL_ERROR "${CMAKE_${pj64_lang}_COMPILER} builds for MSYS2's or Cygwin's POSIX layer "
+            "(${pj64_machine}), not for Windows. In MSYS2, install mingw-w64-x86_64-clang (or -gcc) and "
+            "configure a new build directory from the MINGW64 shell, or name the compilers: "
+            "-DCMAKE_C_COMPILER=/mingw64/bin/clang -DCMAKE_CXX_COMPILER=/mingw64/bin/clang++")
+    endif()
+endforeach()
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
