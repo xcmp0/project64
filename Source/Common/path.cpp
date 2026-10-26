@@ -1560,7 +1560,7 @@ void CPath::cleanPathString(std::string & rDirectory) const
     std::string::size_type pos = rDirectory.find(DIRECTORY_DELIMITER2);
     while (pos != std::string::npos)
     {
-        rDirectory.replace(pos, 1, &DIRECTORY_DELIMITER);
+        rDirectory.replace(pos, 1, 1, DIRECTORY_DELIMITER);
         pos = rDirectory.find(DIRECTORY_DELIMITER2, pos + 1);
     }
 
@@ -1568,7 +1568,7 @@ void CPath::cleanPathString(std::string & rDirectory) const
     pos = rDirectory.find(DIR_DOUBLEDELIM);
     while (pos != std::string::npos)
     {
-        rDirectory.replace(pos, 2, &DIRECTORY_DELIMITER);
+        rDirectory.replace(pos, 2, 1, DIRECTORY_DELIMITER);
         pos = rDirectory.find(DIR_DOUBLEDELIM, pos + 1);
     }
     if (AppendEnd)
