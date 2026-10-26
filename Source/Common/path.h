@@ -159,6 +159,8 @@ public:
     static void SethInst(void * hInst);
     static void * GethInst();
 #endif
+    // Directory that MODULE_DIRECTORY stands for (default: the executable's)
+    static void SetModuleDirectory(const char * Directory);
 
 private:
     // Setup and cleanup

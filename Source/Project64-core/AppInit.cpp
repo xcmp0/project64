@@ -198,6 +198,14 @@ static bool ParseCommand(int32_t argc, char ** argv)
                 return false;
             }
         }
+        else if (strcmp(argv[i], "--basedir") == 0 && ArgsLeft >= 1)
+        {
+            // Read by AppInit before the settings start
+            if (++i == argc - 1)
+            {
+                return true;
+            }
+        }
         else if (ArgsLeft == 0 && argv[i][0] != '-')
         {
             g_Settings->SaveString(Cmd_RomFile, &(argv[i][0]));
@@ -215,6 +223,21 @@ bool AppInit(CNotification * Notify, const char * BaseDirectory, int argc, char 
 {
     try
     {
+        // --basedir <dir> replaces the frontend's base directory; relative paths
+        // in the settings resolve against the base directory
+        std::string BaseDir(BaseDirectory != nullptr ? BaseDirectory : "");
+        for (int i = 1; i + 1 < argc; i++)
+        {
+            if (strcmp(argv[i], "--basedir") == 0)
+            {
+                CPath Dir(argv[i + 1], "");
+                Dir.NormalizePath(CPath(CPath::CURRENT_DIRECTORY));
+                BaseDir = (const char *)Dir;
+            }
+        }
+        BaseDirectory = BaseDir.c_str();
+        CPath::SetModuleDirectory(BaseDirectory);
+
         g_Notify = Notify;
         InitializeLog();
         WriteTrace(TraceAppInit, TraceDebug, "Starting (BaseDirectory: %s)", BaseDirectory ? BaseDirectory : "null");

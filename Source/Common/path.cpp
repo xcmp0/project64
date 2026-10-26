@@ -69,6 +69,18 @@ void * CPath::GethInst()
 }
 #endif
 
+// Directory set by SetModuleDirectory; empty means the executable's
+static std::string & ModuleDirectoryOverride(void)
+{
+    static std::string Directory;
+    return Directory;
+}
+
+void CPath::SetModuleDirectory(const char * Directory)
+{
+    ModuleDirectoryOverride() = Directory != nullptr ? Directory : "";
+}
+
 // Initialization
 
 // Task: Helper function for the various CPath constructors.
@@ -266,9 +278,21 @@ CPath::CPath(DIR_CURRENT_DIRECTORY /*sdt*/, const char * NameExten)
 
 CPath::CPath(DIR_MODULE_DIRECTORY /*sdt*/, const char * NameExten)
 {
-    // The directory where the executable of this app is
+    // The directory where the executable of this app is, unless SetModuleDirectory chose one
     Init();
-    ModuleDirectory();
+    const std::string & Directory = ModuleDirectoryOverride();
+    if (Directory.empty())
+    {
+        ModuleDirectory();
+    }
+    else
+    {
+#ifdef _WIN32
+        SetDriveDirectory(Directory.c_str());
+#else
+        SetDirectory(Directory.c_str());
+#endif
+    }
     if (NameExten)
     {
         SetNameExtension(NameExten);
