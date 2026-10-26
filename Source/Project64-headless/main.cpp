@@ -52,6 +52,9 @@ const char Usage[] =
     "  --cpu <core>         interpreter, recompiler or sync (both, compared);\n"
     "                       default: the game's setting\n"
     "  --seed <n>           seed of the DMA timing jitter (default 0)\n"
+    "  --rsp-gfx <mode>     hle: display lists go to the graphics plugin; lle: the\n"
+    "                       RSP runs the microcode, the plugin gets RDP lists;\n"
+    "                       default: the game's setting\n"
     "  --gfx|--rsp|--audio|--input <file>\n"
     "                       plugin, relative to the plugin directory\n"
     "  --wav <file>         record the audio (WAV audio plugin)\n"
@@ -73,6 +76,7 @@ struct Options
     std::string Rom;
     std::string BaseDir;
     std::string Cpu;
+    std::string RspGfx;
     std::string Gfx, Rsp, Audio, Input;
     std::string Wav, Script;
     std::string DumpDir;
@@ -302,6 +306,11 @@ bool ParseOptions(int argc, char ** argv)
         else if (Option == "--seed")
         {
             ok = ParseNumber(Value, g_Options.Seed);
+        }
+        else if (Option == "--rsp-gfx")
+        {
+            g_Options.RspGfx = Value;
+            ok = g_Options.RspGfx == "hle" || g_Options.RspGfx == "lle";
         }
         else if (Option == "--gfx")
         {
@@ -588,6 +597,10 @@ int Run(void)
     {
         g_Settings->SaveDword(Game_CpuType, CPU_SyncCores);
     }
+    if (!g_Options.RspGfx.empty())
+    {
+        g_Settings->SaveBool(Game_UseHleGfx, g_Options.RspGfx == "hle");
+    }
     if (!g_Options.DumpDir.empty())
     {
         CPath DumpDir(FullPath(g_Options.DumpDir).c_str(), "");
@@ -630,6 +643,10 @@ int Run(void)
     if (!g_Options.Cpu.empty())
     {
         g_Settings->DeleteSetting(Game_CpuType);
+    }
+    if (!g_Options.RspGfx.empty())
+    {
+        g_Settings->DeleteSetting(Game_UseHleGfx);
     }
 
     uint32_t Frames = g_Frame < g_Options.Frames ? (uint32_t)g_Frame : g_Options.Frames;
