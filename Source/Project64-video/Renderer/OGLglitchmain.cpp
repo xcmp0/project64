@@ -187,7 +187,7 @@ void APIENTRY dummy_glSecondaryColor3f(GLfloat/*red*/, GLfloat/*green*/, GLfloat
 GLuint APIENTRY dummy_glCreateShader(GLenum/*type*/)
 { /* GLX render opcode ?, req. OpenGL 2.0 (1.2 w/ ARB_shader_objects) */
     g_Notify->DisplayError("glCreateShader");
-    return ((GLuint)(nullptr));
+    return 0;
 }
 void APIENTRY dummy_glShaderSource(GLuint, GLsizei, const GLchar **, GLint *)
 { /* GLX render opcode ?, req. OpenGL 2.0 (1.2 w/ ARB_shader_objects) */
@@ -200,7 +200,7 @@ void APIENTRY dummy_glCompileShader(GLuint/*shader*/)
 GLuint APIENTRY dummy_glCreateProgram(void)
 { /* GLX render opcode ?, req. OpenGL 2.0 (1.2 w/ ARB_shader_objects) */
     g_Notify->DisplayError("glCreateProgram");
-    return ((GLuint)(nullptr));
+    return 0;
 }
 void APIENTRY dummy_glAttachObject(GLhandleARB, GLhandleARB)
 { /* GLX render opcode ?, req. OpenGL 2.0 (1.2 w/ ARB_shader_objects) */
