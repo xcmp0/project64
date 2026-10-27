@@ -21,10 +21,20 @@ CProject64Input::~CProject64Input()
 void CProject64Input::DevicesChanged(void)
 {
     CGuard guard(m_CS);
-    if (m_Input.get() != nullptr)
+    if (m_Input.get() == nullptr)
     {
-        m_Input->DevicesChanged();
+        return;
     }
+    m_Input->DevicesChanged();
+
+    // The refresh rebuilt every device entry, so the buttons must point at the new ones
+    for (uint32_t i = 0, n = sizeof(m_Controllers) / sizeof(m_Controllers[0]); i < n; i++)
+    {
+        m_Input->MapControllerDevice(m_Controllers[i]);
+    }
+    m_Input->MapControllerDevice(m_N64Mouse);
+    m_Input->MapShortcutDevice(m_Shortcuts);
+    ConfigUIDeviceAdded();
 }
 
 void CProject64Input::DeviceAdded(void)
